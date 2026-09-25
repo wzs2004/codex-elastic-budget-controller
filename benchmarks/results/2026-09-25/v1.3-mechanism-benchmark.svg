@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="440" viewBox="0 0 900 440">
+<rect width="100%" height="100%" fill="#fff"/><text x="48" y="38" font-family="sans-serif" font-size="22" font-weight="700">v1.3 controlled mechanism benchmark (1,000 trials)</text>
+<text x="48" y="78" font-family="sans-serif" font-size="16">Mean selected input tokens</text>
+<rect x="80" y="110" width="120" height="240.0" fill="#94a3b8" transform="translate(0 0.0)"/>
+<rect x="240" y="110" width="120" height="156.9" fill="#2563eb" transform="translate(0 83.1)"/>
+<text x="90" y="374" font-family="sans-serif">baseline 10400</text><text x="246" y="374" font-family="sans-serif">adaptive 6800</text>
+<text x="488" y="78" font-family="sans-serif" font-size="16">Mean reward</text>
+<rect x="520" y="110" width="120" height="222.2" fill="#94a3b8" transform="translate(0 17.8)"/>
+<rect x="680" y="110" width="120" height="240.0" fill="#16a34a" transform="translate(0 0.0)"/>
+<text x="522" y="374" font-family="sans-serif">baseline 0.719</text><text x="676" y="374" font-family="sans-serif">adaptive 0.776</text>
+<text x="48" y="414" font-family="sans-serif" fill="#475569">Token reduction 34.62% · evidence retention 100% · deterministic simulation, not real-model evidence</text>
+</svg>

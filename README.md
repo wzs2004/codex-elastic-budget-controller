@@ -20,6 +20,10 @@ The controller combines:
 
 - per-request preflight planning across reasoning, output, context selection, compression, and cache policy;
 - automatic post-request feedback and a safe diagonal LinUCB learner with drift decay;
+- query-aware extractive context selection with protected boundaries;
+- stable-prefix/dynamic-suffix prompt layout hints for cache reuse;
+- quality/failure cascade fallback, enabled only by explicit request opt-in;
+- quality, failure-rate, and latency guardrails plus IPS/SNIPS/DR evaluation;
 - four capacity profiles from economy through extended;
 - an elastic compaction threshold with reserve and quantization limits;
 - hysteresis, cooldowns, legacy-session isolation, and one profile change per session;
@@ -50,10 +54,14 @@ For periodic execution, use your platform scheduler. The controller writes confi
 
 `--execute-request` exports the selected plan as `ELASTIC_BUDGET_PLAN`, parses the worker's final JSON line, updates the learner immediately, and appends a decision/propensity/outcome record beside the state file for offline evaluation.
 
+When `context_segments` are supplied, the plan contains the selected segments and a cache-friendly layout. The worker must apply that plan when assembling the model request. Set `"enable_cascade": true` only when an extra fallback call and its cost are acceptable.
+
 ## Test
 
 ```bash
 python3 test_elastic_budget_controller.py
+python3 test_off_policy_eval.py
+python3 benchmarks/compare_v13.py
 python3 benchmarks/run_ab.py --help
 ```
 
@@ -67,6 +75,7 @@ See [`benchmarks/README.zh-CN.md`](benchmarks/README.zh-CN.md) for the reproduci
 - [Problems, literature review, and next experiment design (Chinese)](benchmarks/PROBLEMS_AND_NEXT_STEPS.zh-CN.md)
 - [Token-efficiency research and closed-loop design (Chinese)](benchmarks/TOKEN_EFFICIENCY_RESEARCH.zh-CN.md)
 - [Online-learning simulation](benchmarks/results/2026-09-25/online-learning-simulation.svg) (mechanism validation only, not real-model savings)
+- [v1.3 mechanism benchmark](benchmarks/results/2026-09-25/v1.3-mechanism-benchmark.svg): 1,000 deterministic trials, 34.62% fewer selected input tokens and 100% evidence retention; not real-model evidence
 - [By-case chart](benchmarks/results/2026-09-25/charts/by-case.svg) · [Paired deltas](benchmarks/results/2026-09-25/charts/paired-deltas.svg) · [Validity threats](benchmarks/results/2026-09-25/charts/validity-threats.svg)
 
 ## Safety notes

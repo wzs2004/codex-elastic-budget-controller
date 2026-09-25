@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "default_profile": "standard",
   "evaluation_interval_seconds": 120,
     "lookback_hours": 6,
@@ -14,8 +14,18 @@
     "quantum_tokens": 1024,
     "minimum_reserve_tokens": 8192
   },
+  "context_selection": {
+    "preserve_boundaries": true,
+    "method": "deterministic-query-aware-extractive"
+  },
   "request_budgeting": {
     "long_context_tokens": 65536,
+    "context_target_ratio": 0.72,
+    "cascade": {
+      "enabled": true,
+      "quality_below": 0.72,
+      "fallback_on_failure": true
+    },
     "bands": [
       {"name": "micro", "max_tokens": 1024},
       {"name": "short", "max_tokens": 8192},
@@ -43,6 +53,9 @@
       "epsilon": 0.08,
       "geometric_decay": 0.98,
       "max_failure_rate": 0.10,
+      "minimum_quality": 0.65,
+      "max_mean_latency_seconds": 90,
+      "guardrail_minimum_trials": 3,
       "cost_scale_tokens": 50000,
       "latency_scale_seconds": 120,
       "failure_penalty": 1.0

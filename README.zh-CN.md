@@ -17,7 +17,11 @@
 - 每个请求执行 preflight，综合输入长度、复杂度、质量风险、工具量、轮数和缓存复用性；
 - 输出推理强度、详细度、输出上限、上下文选择、压缩模式、窗口、压缩阈值和缓存策略；
 - `--execute-request` 在请求后自动解析反馈并更新对角 LinUCB；旧反馈按几何衰减；
-- 安全探索限制候选 profile，并剔除失败率超过上限的动作；
+- 安全探索限制候选 profile，并用质量下界、失败率和平均延迟三重闸门剔除危险动作；
+- 接收 `context_segments` 时，按查询相关度、结构、时序与保护标记执行确定性上下文筛选；
+- 输出稳定前缀/动态后缀布局，便于上游复用 prompt cache；
+- 可显式启用质量/失败级联：低成本动作未达质量线时自动重试更强 profile；
+- 记录 propensity，并提供 IPS、SNIPS、Doubly Robust 离线策略评估；
 - economy、balanced、standard、extended 四级容量策略；
 - 在安全范围内连续调整压缩阈值；
 - 保留最小上下文余量，并量化阈值以减少配置抖动；
@@ -64,10 +68,32 @@ python3 elastic-budget-controller.py --policy elastic-budget-policy.example.json
 没有明确 grader 时，控制器只能使用成功/失败，不能可靠学习语义质量。
 预算计划会作为 `ELASTIC_BUDGET_PLAN` 传给被包装命令；每次运行的决策、propensity 和结果会追加到状态文件旁的 `*.requests.jsonl`，用于离线回放与反事实评估。
 
+上下文筛选输入示例：
+
+```json
+{"text":"查找营收证据","context_segments":[
+  {"text":"只能依据证据回答","role":"instruction","stable":true},
+  {"text":"无关材料"},
+  {"text":"营收增长 12%","must_keep":true}
+]}
+```
+
+`context_selection.selected_segments` 是实际应交给模型的片段，`prompt_layout` 给出缓存友好的排序计划。控制器只生成计划；上游 worker 必须按计划组装请求。
+
+启用级联时在请求 JSON 中设置 `"enable_cascade": true`。该功能会产生第二次模型调用及额外费用，因此默认只规划、不自动重试。
+
+离线评估：
+
+```bash
+python3 benchmarks/off_policy_eval.py path/to/requests.jsonl
+```
+
 ## 测试
 
 ```bash
 python3 test_elastic_budget_controller.py
+python3 test_off_policy_eval.py
+python3 benchmarks/compare_v13.py
 python3 benchmarks/run_ab.py --help
 ```
 
@@ -81,6 +107,7 @@ python3 benchmarks/run_ab.py --help
 - [实验暴露的问题、文献依据与下一版方案](benchmarks/PROBLEMS_AND_NEXT_STEPS.zh-CN.md)
 - [Token 效率研究与闭环学习方案](benchmarks/TOKEN_EFFICIENCY_RESEARCH.zh-CN.md)
 - [在线学习模拟结果](benchmarks/results/2026-09-25/online-learning-simulation.svg)（只验证学习机制，不代表真实模型节省）
+- [v1.3 机制测试](benchmarks/results/2026-09-25/v1.3-mechanism-benchmark.svg)：1,000 次确定性受控试验，输入片段减少 34.62%，证据保留率 100%，只证明实现机制；
 - [按任务图表](benchmarks/results/2026-09-25/charts/by-case.svg) · [配对差值图](benchmarks/results/2026-09-25/charts/paired-deltas.svg) · [有效性问题图](benchmarks/results/2026-09-25/charts/validity-threats.svg)
 
 ## 安全提示

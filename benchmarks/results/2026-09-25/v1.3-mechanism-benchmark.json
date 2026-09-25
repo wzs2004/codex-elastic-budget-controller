@@ -1,0 +1,10 @@
+{
+  "kind": "deterministic_mechanism_benchmark_not_real_model_evidence",
+  "trials": 1000,
+  "mean_baseline_input_tokens": 10400.0,
+  "mean_adaptive_input_tokens": 6800.0,
+  "input_token_reduction_percent": 34.62,
+  "evidence_retention_rate": 1.0,
+  "baseline_mean_reward": 0.718667,
+  "adaptive_mean_reward": 0.776073
+}

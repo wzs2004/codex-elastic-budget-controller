@@ -191,6 +191,96 @@ def normalize_request(request: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def lexical_terms(text: str) -> set:
+    """Return cheap multilingual retrieval terms without dependencies."""
+    lowered = text.lower()
+    terms = set(re.findall(r"[a-z0-9_]{2,}|[\u4e00-\u9fff]{2,}", lowered))
+    chinese = "".join(re.findall(r"[\u4e00-\u9fff]", lowered))
+    terms.update(chinese[index:index + 2] for index in range(max(0, len(chinese) - 1)))
+    return {term for term in terms if term}
+
+
+def select_context_segments(
+    request: Dict[str, Any], target_tokens: int, policy: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Select query-relevant segments while preserving protected boundaries."""
+    raw_segments = request.get("context_segments") or []
+    if not raw_segments:
+        return {"applied": False, "reason": "no context_segments supplied",
+                "input_tokens": 0, "selected_tokens": 0, "selected_indices": []}
+    segments = []
+    for index, raw in enumerate(raw_segments):
+        item = dict(raw) if isinstance(raw, dict) else {"text": str(raw)}
+        content = str(item.get("text") or "")
+        segments.append({"index": index, "text": content,
+                         "tokens": int(item.get("tokens") or estimate_request_tokens(content)),
+                         "must_keep": bool(item.get("must_keep", False)),
+                         "stable": bool(item.get("stable", False)),
+                         "role": str(item.get("role") or "context")})
+    total = sum(item["tokens"] for item in segments)
+    budget = max(1, min(int(target_tokens), total))
+    query = " ".join(str(request.get(key) or "") for key in ("text", "prompt", "query"))
+    query_terms = lexical_terms(query)
+    last_index = len(segments) - 1
+    preserve = bool(policy.get("context_selection", {}).get("preserve_boundaries", True))
+    protected = {item["index"] for item in segments if item["must_keep"]
+                 or item["role"] in {"system", "developer", "instruction", "schema"}
+                 or (preserve and item["index"] in {0, last_index})}
+
+    def relevance(item: Dict[str, Any]) -> Tuple[float, int]:
+        overlap = len(query_terms & lexical_terms(item["text"])) / max(1, len(query_terms))
+        recency = item["index"] / max(1, last_index)
+        structure = 1.0 if re.search(r"(?m)^(#{1,6}\s|[A-Z][A-Z ]+:|第.{1,8}[章节])", item["text"]) else 0.0
+        return 0.62 * overlap + 0.18 * recency + 0.12 * structure + 0.08 * float(item["stable"]), -item["index"]
+
+    selected = set(protected)
+    used = sum(segments[index]["tokens"] for index in selected)
+    for item in sorted((item for item in segments if item["index"] not in selected),
+                       key=relevance, reverse=True):
+        if used + item["tokens"] <= budget or not selected:
+            selected.add(item["index"]); used += item["tokens"]
+    ordered = sorted(selected)
+    return {"applied": used < total, "method": "deterministic-query-aware-extractive",
+            "input_tokens": total, "target_tokens": budget, "selected_tokens": used,
+            "compression_ratio": round(used / max(1, total), 4),
+            "selected_indices": ordered,
+            "dropped_indices": [item["index"] for item in segments if item["index"] not in selected],
+            "selected_segments": [segments[index]["text"] for index in ordered],
+            "protected_indices": sorted(protected)}
+
+
+def prompt_layout_plan(request: Dict[str, Any], selection: Dict[str, Any]) -> Dict[str, Any]:
+    """Describe a prompt-cache-friendly stable-prefix layout."""
+    segments = request.get("context_segments") or []
+    selected = set(selection.get("selected_indices") or range(len(segments)))
+    stable, dynamic = [], []
+    for index, raw in enumerate(segments):
+        if index not in selected:
+            continue
+        item = dict(raw) if isinstance(raw, dict) else {"text": str(raw)}
+        destination = stable if item.get("stable") or item.get("role") in {
+            "system", "developer", "instruction", "schema"} else dynamic
+        destination.append(index)
+    return {"stable_prefix_indices": stable, "dynamic_suffix_indices": dynamic,
+            "append_only_history": True,
+            "cache_breakpoint_after_segment": stable[-1] if stable else None}
+
+
+def arm_guardrail_status(item: Dict[str, Any], learner: Dict[str, Any]) -> Tuple[bool, str]:
+    """Apply quality, failure and latency constraints to an observed arm."""
+    attempts = int(item.get("count") or 0)
+    minimum = int(learner.get("guardrail_minimum_trials", learner.get("minimum_trials", 2)))
+    if attempts < minimum:
+        return True, "insufficient evidence for exclusion"
+    if int(item.get("failures") or 0) / max(1, attempts) > float(learner.get("max_failure_rate", 0.10)):
+        return False, "failure-rate guardrail"
+    if float(item.get("quality_mean") or 0.0) < float(learner.get("minimum_quality", 0.65)):
+        return False, "quality-floor guardrail"
+    if float(item.get("latency_seconds_total") or 0.0) / max(1, attempts) > float(learner.get("max_mean_latency_seconds", 90)):
+        return False, "latency guardrail"
+    return True, "within guardrails"
+
+
 def choose_request_profile(
     tier: str, base_profile: str, request: Dict[str, Any], policy: Dict[str, Any],
     learning: Optional[Dict[str, Any]] = None,
@@ -208,12 +298,10 @@ def choose_request_profile(
     eligible = []
     for name in candidates:
         item = stats.get(f"{tier}:{name}") or {}
-        attempts = int(item.get("count") or 0)
-        failures = int(item.get("failures") or 0)
-        failure_rate = failures / attempts if attempts else 0.0
-        if attempts < minimum_trials or failure_rate <= float(learner.get("max_failure_rate", 0.10)):
+        safe, _ = arm_guardrail_status(item, learner)
+        if safe:
             eligible.append(name)
-    eligible = eligible or [base_profile]
+    eligible = eligible or ([base_profile] if base_profile in candidates else candidates[:1])
     under_tested = [
         name for name in eligible
         if int((stats.get(f"{tier}:{name}") or {}).get("count") or 0) < minimum_trials
@@ -291,6 +379,7 @@ def update_request_learning(
         - latency / max(1.0, float(learner.get("latency_scale_seconds", 120)))
         - (0.0 if success else float(learner.get("failure_penalty", 1.0)))
     )
+    feedback["reward"] = round(reward, 8)
     request_learning = dict(state.get("request_learning") or {})
     arms = dict(request_learning.get("arms") or {})
     decay = clamp(float(learner.get("geometric_decay", 0.98)), 0.5, 1.0)
@@ -357,67 +446,73 @@ def execute_request(
         raise ValueError("request requires command as a non-empty string array")
     plan = request_budget(request, policy, state.get("request_learning") or {})
     request_id = str(request.get("request_id") or uuid.uuid4())
-    environment = dict(os.environ)
-    environment["ELASTIC_BUDGET_PLAN"] = json.dumps(
-        plan, ensure_ascii=False, separators=(",", ":")
-    )
-    environment["ELASTIC_REQUEST_ID"] = request_id
-    started = time.monotonic()
-    timed_out = False
-    try:
-        completed = subprocess.run(
-            command,
-            input=str(request.get("stdin") or ""),
-            text=True,
-            capture_output=True,
-            env=environment,
-            timeout=max(1.0, float(request.get("timeout_seconds") or 120)),
-            check=False,
-        )
-        return_code = completed.returncode
-        stdout = completed.stdout
-        stderr = completed.stderr
-    except subprocess.TimeoutExpired as error:
-        timed_out = True
-        return_code = 124
-        stdout = error.stdout if isinstance(error.stdout, str) else ""
-        stderr = error.stderr if isinstance(error.stderr, str) else ""
-    latency = time.monotonic() - started
-    parsed: Dict[str, Any] = {}
-    for line in reversed(stdout.splitlines()):
+    def run_attempt(attempt_plan: Dict[str, Any]) -> Dict[str, Any]:
+        environment = dict(os.environ)
+        environment["ELASTIC_BUDGET_PLAN"] = json.dumps(
+            attempt_plan, ensure_ascii=False, separators=(",", ":"))
+        environment["ELASTIC_REQUEST_ID"] = request_id
+        started = time.monotonic()
+        timed_out = False
         try:
-            candidate = json.loads(line)
-        except ValueError:
-            continue
-        if isinstance(candidate, dict):
-            parsed = candidate
-            break
-    success = return_code == 0 and not timed_out and bool(parsed.get("success", True))
-    usage = parsed.get("usage") or {}
-    cost_tokens = float(parsed.get("cost_tokens") or (
-        float(usage.get("input_tokens") or 0)
-        + float(usage.get("output_tokens") or 0)
-        + float(usage.get("reasoning_output_tokens") or 0)
-    ))
-    feedback = {
-        "tier": plan["tier"],
-        "profile": plan["budget_actions"]["profile"],
-        "features": plan["features"],
-        "quality_score": quality_from_result(parsed) if not timed_out else 0.0,
-        "cost_tokens": cost_tokens,
-        "latency_seconds": latency,
-        "success": success,
-    }
-    updated = update_request_learning(state, feedback, policy)
+            completed = subprocess.run(
+                command, input=str(request.get("stdin") or ""), text=True,
+                capture_output=True, env=environment,
+                timeout=max(1.0, float(request.get("timeout_seconds") or 120)), check=False)
+            return_code, stdout, stderr = completed.returncode, completed.stdout, completed.stderr
+        except subprocess.TimeoutExpired as error:
+            timed_out, return_code = True, 124
+            stdout = error.stdout if isinstance(error.stdout, str) else ""
+            stderr = error.stderr if isinstance(error.stderr, str) else ""
+        latency = time.monotonic() - started
+        parsed: Dict[str, Any] = {}
+        for line in reversed(stdout.splitlines()):
+            try:
+                candidate = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(candidate, dict):
+                parsed = candidate; break
+        success = return_code == 0 and not timed_out and bool(parsed.get("success", True))
+        usage = parsed.get("usage") or {}
+        cost_tokens = float(parsed.get("cost_tokens") or (
+            float(usage.get("input_tokens") or 0) + float(usage.get("output_tokens") or 0)
+            + float(usage.get("reasoning_output_tokens") or 0)))
+        feedback = {"tier": attempt_plan["tier"],
+                    "profile": attempt_plan["budget_actions"]["profile"],
+                    "features": attempt_plan["features"],
+                    "quality_score": quality_from_result(parsed) if not timed_out else 0.0,
+                    "cost_tokens": cost_tokens, "latency_seconds": latency, "success": success}
+        return {"plan": attempt_plan, "feedback": feedback, "return_code": return_code,
+                "timed_out": timed_out, "stdout": stdout, "stderr": stderr,
+                "parsed_result": parsed}
+
+    attempts = [run_attempt(plan)]
+    first = attempts[0]
+    cascade = plan.get("cascade") or {}
+    should_fallback = bool(request.get("enable_cascade") and cascade.get("enabled") and (
+        (cascade.get("fallback_on_failure") and not first["feedback"]["success"])
+        or first["feedback"]["quality_score"] < float(cascade.get("quality_below", 0.72))))
+    if should_fallback and cascade.get("fallback_profile") != plan["budget_actions"]["profile"]:
+        fallback_plan = json.loads(json.dumps(plan))
+        fallback = next(item for item in policy["profiles"]
+                        if item["name"] == cascade["fallback_profile"])
+        fallback_plan["budget_actions"].update({
+            "profile": fallback["name"], "reasoning_effort": fallback["reasoning_effort"],
+            "verbosity": fallback.get("verbosity", "low"),
+            "reasoning_summary": fallback.get("reasoning_summary", "concise"),
+            "context_window": fallback["context_window"],
+        })
+        fallback_plan["learning_decision"] = "quality/failure cascade fallback"
+        attempts.append(run_attempt(fallback_plan))
+    updated = state
+    for attempt in attempts:
+        updated = update_request_learning(updated, attempt["feedback"], policy)
+    final_attempt = attempts[-1]
     outcome = {
         "request_id": request_id,
-        "plan": plan,
-        "feedback": feedback,
-        "return_code": return_code,
-        "timed_out": timed_out,
-        "stdout": stdout,
-        "stderr": stderr,
-        "parsed_result": parsed,
+        **final_attempt,
+        "attempts": attempts,
+        "cascade_triggered": len(attempts) > 1,
     }
     return outcome, updated
 
@@ -501,6 +596,19 @@ def request_budget(
         "cache_mode": cache_mode,
         "target_input_tokens": min(window - reserve, max(estimated, int(estimated * 1.2))),
     })
+    context_target = min(
+        selected["target_input_tokens"],
+        max(1, int(estimated * float(settings.get("context_target_ratio", 0.72)))),
+    )
+    selection = select_context_segments(request, context_target, policy)
+    layout = prompt_layout_plan(request, selection)
+    candidates = list((settings.get("candidate_profiles") or {}).get(tier) or [profile_name])
+    try:
+        current_index = candidates.index(profile_name)
+    except ValueError:
+        current_index = 0
+    fallback_profile = candidates[min(len(candidates) - 1, current_index + 1)] if candidates else profile_name
+    cascade = settings.get("cascade", {})
     return {
         "policy_version": policy.get("version", 1),
         "decision_scope": "every_request",
@@ -510,6 +618,15 @@ def request_budget(
         "budget_actions": selected,
         "learning_decision": learning_reason,
         "action_propensity": propensity,
+        "context_selection": selection,
+        "prompt_layout": layout,
+        "cascade": {
+            "enabled": bool(cascade.get("enabled", True)),
+            "fallback_profile": fallback_profile,
+            "quality_below": float(cascade.get("quality_below", 0.72)),
+            "fallback_on_failure": bool(cascade.get("fallback_on_failure", True)),
+            "execution_requires_opt_in": True,
+        },
         "provider_integration_hints": {
             "model_routing": "use upstream router if available; not changed by this controller",
             "speculative_decoding": "provider/runtime capability; not changed by this controller",

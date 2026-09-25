@@ -97,6 +97,66 @@ class ElasticBudgetTests(unittest.TestCase):
         self.assertEqual(outcome["feedback"]["cost_tokens"], 120)
         self.assertTrue(state["request_learning"]["arms"])
 
+    def test_context_selector_keeps_instructions_and_relevant_evidence(self):
+        request = {
+            "text": "苹果公司的营收是多少？", "estimated_input_tokens": 1200,
+            "context_segments": [
+                {"text": "必须引用证据。", "tokens": 80, "role": "instruction", "stable": True},
+                {"text": "香蕉价格下降。", "tokens": 300},
+                {"text": "苹果公司营收增长 12%。", "tokens": 300},
+                {"text": "附录：数据截至 2026 年。", "tokens": 80},
+            ],
+        }
+        selected = MODULE.select_context_segments(request, 500, POLICY)
+        self.assertTrue(selected["applied"])
+        self.assertIn(0, selected["selected_indices"])
+        self.assertIn(2, selected["selected_indices"])
+        self.assertIn(3, selected["selected_indices"])
+        self.assertNotIn(1, selected["selected_indices"])
+
+    def test_prompt_layout_places_stable_segments_first(self):
+        request = {"context_segments": [
+            {"text": "rules", "stable": True}, {"text": "dynamic evidence"},
+        ]}
+        layout = MODULE.prompt_layout_plan(request, {"selected_indices": [0, 1]})
+        self.assertEqual(layout["stable_prefix_indices"], [0])
+        self.assertEqual(layout["dynamic_suffix_indices"], [1])
+
+    def test_quality_guardrail_excludes_degraded_arm(self):
+        learning = {"arms": {
+            "micro:economy": {"count": 4, "quality_mean": 0.3, "failures": 0,
+                              "latency_seconds_total": 4},
+            "micro:balanced": {"count": 4, "quality_mean": 0.9, "failures": 0,
+                               "latency_seconds_total": 8},
+        }}
+        plan = MODULE.request_budget({"estimated_input_tokens": 300,
+                                      "complexity": 0.1, "quality_risk": 0.1},
+                                     POLICY, learning)
+        self.assertEqual(plan["budget_actions"]["profile"], "balanced")
+
+    def test_every_plan_exposes_safe_cascade(self):
+        plan = MODULE.request_budget({"estimated_input_tokens": 300}, POLICY)
+        self.assertTrue(plan["cascade"]["enabled"])
+        self.assertIn("fallback_profile", plan["cascade"])
+        self.assertTrue(plan["cascade"]["execution_requires_opt_in"])
+
+    def test_opt_in_cascade_retries_with_stronger_profile(self):
+        request = {
+            "estimated_input_tokens": 300, "complexity": 0.1, "quality_risk": 0.1,
+            "enable_cascade": True,
+            "command": ["python3", "-c", (
+                "import json, os; p=json.loads(os.environ['ELASTIC_BUDGET_PLAN']); "
+                "q=0.4 if p['budget_actions']['profile']=='economy' else 0.9; "
+                "print(json.dumps({'success': True, 'quality_score': q, "
+                "'usage': {'input_tokens': 100, 'output_tokens': 20}}))"
+            )],
+        }
+        outcome, state = MODULE.execute_request(request, POLICY, {})
+        self.assertTrue(outcome["cascade_triggered"])
+        self.assertEqual(len(outcome["attempts"]), 2)
+        self.assertEqual(outcome["feedback"]["quality_score"], 0.9)
+        self.assertEqual(len(state["request_learning"]["arms"]), 2)
+
     def test_pressure_moves_only_one_level(self):
         metrics = {
             "sessions": 1, "occupancy": 0.90, "growth_tokens_per_minute": 3000,
