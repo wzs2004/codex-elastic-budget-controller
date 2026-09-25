@@ -60,7 +60,9 @@ def overview(rows, output):
         ("Cost proxy (completed)", {name: mean(completed[name], "cost_proxy") for name in groups}, "", None),
         ("Latency s (completed)", {name: mean(completed[name], "latency_seconds") for name in groups}, "s", None),
     ]
-    parts = svg_start(1280, 570, "A/B benchmark overview / 实验总览", "18 trials; resource metrics exclude two censored timeout samples")
+    timeout_count = sum(row["timed_out"] for row in rows)
+    subtitle = f"{len(rows)} trials; resource metrics exclude {timeout_count} censored timeout sample(s)"
+    parts = svg_start(1280, 570, "A/B benchmark overview / 实验总览", subtitle)
     legend(parts, 1000, 46)
     left, top, chart_w, row_h = 290, 112, 830, 78
     for index, (label, values, suffix, ceiling) in enumerate(metrics):
@@ -75,7 +77,9 @@ def overview(rows, output):
             parts.append(f'<rect x="{left}" y="{bar_y}" width="{width:.1f}" height="19" rx="5" fill="{COLORS[treatment]}"/>')
             shown = f"{value:.1f}{suffix}" if suffix or value < 1000 else f"{value:,.0f}"
             parts.append(text(left + min(width + 8, chart_w - 2), bar_y + 14, shown, 12, TEXT))
-    parts.append(text(40, 535, "Timeouts: baseline 1, adaptive 1. Zero-token timeout records are excluded from resource means above.", 12, MUTED))
+    base_timeouts = sum(row["timed_out"] for row in groups["baseline"])
+    adaptive_timeouts = sum(row["timed_out"] for row in groups["adaptive"])
+    parts.append(text(40, 535, f"Timeouts: baseline {base_timeouts}, adaptive {adaptive_timeouts}. Timeout records are excluded from resource means above.", 12, MUTED))
     parts.append("</svg>")
     output.write_text("\n".join(parts) + "\n")
 
@@ -83,7 +87,9 @@ def overview(rows, output):
 def case_comparison(rows, output):
     cases = sorted({row["case"] for row in rows})
     metrics = [("Tokens", "total_tokens"), ("Cost proxy", "cost_proxy"), ("Latency (s)", "latency_seconds")]
-    parts = svg_start(1200, 650, "Completed-run comparison by case / 按任务对比", "Means use successful runs only; n is two or three per cell")
+    row_h = 130
+    height = 150 + len(cases) * row_h
+    parts = svg_start(1200, height, "Completed-run comparison by case / 按任务对比", "Means use successful runs only; n is shown per cell")
     legend(parts, 920, 46)
     panel_w = 330
     for mi, (label, key) in enumerate(metrics):
@@ -100,7 +106,7 @@ def case_comparison(rows, output):
                 case_values[case][treatment] = (value, len(sample))
                 max_value = max(max_value, value)
         for ci, case in enumerate(cases):
-            y = py + ci * 160
+            y = py + ci * row_h
             short = case.replace("constraint_reasoning", "constraint").replace("structured_analysis", "structured")
             parts.append(text(px, y, short, 13, TEXT, weight=600))
             for tj, treatment in enumerate(("baseline", "adaptive")):
@@ -113,7 +119,7 @@ def case_comparison(rows, output):
                 parts.append(text(px + min(width + 6, panel_w - 66), bar_y + 16, f"{shown} (n={n})", 11, TEXT))
             failures = [r["treatment"] for r in rows if r["case"] == case and r["return_code"] != 0]
             if failures:
-                parts.append(text(px, y + 114, "timeout: " + ", ".join(failures), 11, "#b91c1c"))
+                parts.append(text(px, y + 108, "timeout: " + ", ".join(failures), 11, "#b91c1c"))
     parts.append("</svg>")
     output.write_text("\n".join(parts) + "\n")
 
@@ -123,9 +129,10 @@ def paired_deltas(rows, output):
     for row in rows:
         pairs.setdefault((row["case"], row["round"]), {})[row["treatment"]] = row
     ordered = sorted(pairs)
-    parts = svg_start(1120, 610, "Paired adaptive minus baseline / 配对差值", "Negative is better for cost and latency; timeout pairs are marked separately")
+    height = 170 + len(ordered) * 47
+    parts = svg_start(1120, height, "Paired adaptive minus baseline / 配对差值", "Negative is better for cost proxy; timeout pairs are marked separately")
     x0, center, scale, y0 = 300, 650, 0.020, 120
-    parts.append(f'<line x1="{center}" y1="100" x2="{center}" y2="550" stroke="{TEXT}" stroke-width="1.5"/>')
+    parts.append(f'<line x1="{center}" y1="100" x2="{center}" y2="{height - 55}" stroke="{TEXT}" stroke-width="1.5"/>')
     parts.append(text(center - 12, 94, "adaptive better", 11, MUTED, "end"))
     parts.append(text(center + 12, 94, "baseline better", 11, MUTED))
     deltas = []
@@ -150,19 +157,21 @@ def paired_deltas(rows, output):
         parts.append(f'<circle cx="{x}" cy="{y}" r="7" fill="{color}"/>')
         parts.append(text(x + (-10 if delta < 0 else 10), y - 8, f"{delta:+,.0f}", 11, TEXT, "end" if delta < 0 else "start"))
     if deltas:
-        parts.append(text(40, 580, f"Completed pairs median cost-proxy delta: {statistics.median(deltas):+,.0f}; mean: {statistics.mean(deltas):+,.0f}", 12, MUTED))
+        parts.append(text(40, height - 25, f"Completed pairs median cost-proxy delta: {statistics.median(deltas):+,.0f}; mean: {statistics.mean(deltas):+,.0f}", 12, MUTED))
     parts.append("</svg>")
     output.write_text("\n".join(parts) + "\n")
 
 
-def threats_chart(output):
+def threats_chart(rows, output):
+    cases = len({row["case"] for row in rows})
+    rounds = len({row["round"] for row in rows})
     items = [
-        ("Short tasks", "No run approached the 48K minimum context tier", "HIGH"),
-        ("Coupled parameters", "Window, threshold, reasoning and verbosity changed together", "HIGH"),
-        ("Timeout censoring", "Missing usage was encoded as zero in the first report", "HIGH"),
-        ("Cache/order effects", "One cache-hit sample occurred in each treatment", "HIGH"),
-        ("Small sample", "3 cases × 3 rounds; uncertainty is dominant", "HIGH"),
-        ("Static labels", "Adaptive profiles were preassigned, not selected online", "MED"),
+        ("Profile bundle", "Window, threshold, reasoning, verbosity and summary change together", "HIGH"),
+        ("Small sample", f"{cases} cases × {rounds} round(s); uncertainty is dominant", "HIGH"),
+        ("Cold start", "The online learner has no production feedback in this isolated run", "HIGH"),
+        ("Short contexts", "These prompts do not stress long-context selection or compaction", "HIGH"),
+        ("Cache/order effects", "Alternating order reduces but cannot eliminate temporal cache effects", "MED"),
+        ("Proxy cost", "Weighted tokens are not a provider invoice without explicit prices", "MED"),
     ]
     parts = svg_start(1120, 560, "Validity threats / 有效性问题", "Why this run is evidence of a harness, not proof of an optimization win")
     for index, (name, detail, level) in enumerate(items):
@@ -188,7 +197,7 @@ def main():
     overview(rows, chart_dir / "overview.svg")
     case_comparison(rows, chart_dir / "by-case.svg")
     paired_deltas(rows, chart_dir / "paired-deltas.svg")
-    threats_chart(chart_dir / "validity-threats.svg")
+    threats_chart(rows, chart_dir / "validity-threats.svg")
     print(f"wrote 4 charts to {chart_dir}")
 
 

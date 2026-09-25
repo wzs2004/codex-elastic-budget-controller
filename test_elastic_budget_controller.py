@@ -82,6 +82,7 @@ class ElasticBudgetTests(unittest.TestCase):
         }, POLICY, state["request_learning"])
         self.assertEqual(plan["budget_actions"]["profile"], "economy")
         self.assertIn("LinUCB", plan["learning_decision"])
+        self.assertIn("a_matrix", next(iter(state["request_learning"]["arms"].values())))
 
     def test_execute_request_closes_feedback_loop(self):
         request = {
@@ -142,11 +143,11 @@ class ElasticBudgetTests(unittest.TestCase):
 
     def test_opt_in_cascade_retries_with_stronger_profile(self):
         request = {
-            "estimated_input_tokens": 300, "complexity": 0.1, "quality_risk": 0.1,
+            "estimated_input_tokens": 300, "complexity": 0.5, "quality_risk": 0.8,
             "enable_cascade": True,
             "command": ["python3", "-c", (
                 "import json, os; p=json.loads(os.environ['ELASTIC_BUDGET_PLAN']); "
-                "q=0.4 if p['budget_actions']['profile']=='economy' else 0.9; "
+                "q=0.9 if p['budget_actions']['profile']=='standard' else 0.4; "
                 "print(json.dumps({'success': True, 'quality_score': q, "
                 "'usage': {'input_tokens': 100, 'output_tokens': 20}}))"
             )],
@@ -156,6 +157,33 @@ class ElasticBudgetTests(unittest.TestCase):
         self.assertEqual(len(outcome["attempts"]), 2)
         self.assertEqual(outcome["feedback"]["quality_score"], 0.9)
         self.assertEqual(len(state["request_learning"]["arms"]), 2)
+
+    def test_low_risk_quality_miss_does_not_pay_for_cascade(self):
+        request = {
+            "estimated_input_tokens": 300, "complexity": 0.1, "quality_risk": 0.1,
+            "enable_cascade": True,
+            "command": ["python3", "-c", (
+                "import json; print(json.dumps({'success': True, 'quality_score': 0.4, "
+                "'usage': {'input_tokens': 100, 'output_tokens': 20}}))"
+            )],
+        }
+        outcome, _ = MODULE.execute_request(request, POLICY, {})
+        self.assertFalse(outcome["cascade_triggered"])
+
+    def test_drift_detector_shrinks_stale_learning(self):
+        policy = json.loads(json.dumps(POLICY))
+        policy["request_budgeting"]["learning"]["drift_detection"].update({
+            "minimum_observations": 3, "threshold": 0.2, "delta": 0.0,
+        })
+        state = {}
+        for quality in (0.95, 0.95, 0.1):
+            state = MODULE.update_request_learning(state, {
+                "tier": "micro", "profile": "economy", "quality_score": quality,
+                "cost_tokens": 100, "latency_seconds": 1, "success": True,
+            }, policy)
+        self.assertTrue(state["request_learning"]["drifts"]["micro"]["detected"])
+        arm = state["request_learning"]["arms"]["micro:economy"]
+        self.assertLess(arm["count"], 2)
 
     def test_pressure_moves_only_one_level(self):
         metrics = {

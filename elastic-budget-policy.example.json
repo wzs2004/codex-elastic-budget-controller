@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "default_profile": "standard",
   "evaluation_interval_seconds": 120,
     "lookback_hours": 6,
@@ -24,6 +24,8 @@
     "cascade": {
       "enabled": true,
       "quality_below": 0.72,
+      "quality_risk_adjustment": 0.08,
+      "minimum_quality_risk": 0.35,
       "fallback_on_failure": true
     },
     "bands": [
@@ -51,14 +53,26 @@
       "minimum_trials": 2,
       "ucb_exploration": 0.35,
       "epsilon": 0.08,
+      "minimum_epsilon": 0.01,
+      "exploration_decay_trials": 20,
+      "high_risk_exploration_suppression": 0.75,
+      "capacity_cost_prior": 0.025,
       "geometric_decay": 0.98,
-      "max_failure_rate": 0.10,
+      "confidence_z": 1.64,
+      "max_failure_rate_upper": 0.65,
       "minimum_quality": 0.65,
       "max_mean_latency_seconds": 90,
       "guardrail_minimum_trials": 3,
       "cost_scale_tokens": 50000,
       "latency_scale_seconds": 120,
-      "failure_penalty": 1.0
+      "failure_penalty": 1.0,
+      "drift_detection": {
+        "enabled": true,
+        "minimum_observations": 20,
+        "delta": 0.01,
+        "threshold": 3.0,
+        "matrix_retention": 0.25
+      }
     }
   },
   "learning": {

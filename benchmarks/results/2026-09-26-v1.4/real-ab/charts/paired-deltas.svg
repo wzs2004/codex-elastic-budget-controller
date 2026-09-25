@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="405" viewBox="0 0 1120 405" role="img" aria-labelledby="title desc">
+<title id="title">Paired adaptive minus baseline / 配对差值</title>
+<desc id="desc">Negative is better for cost proxy; timeout pairs are marked separately</desc>
+<rect width="1120" height="405" fill="#ffffff" rx="16"/>
+<text x="40" y="46" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="24" font-weight="700" fill="#0f172a">Paired adaptive minus baseline / 配对差值</text>
+<text x="40" y="72" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" fill="#64748b">Negative is better for cost proxy; timeout pairs are marked separately</text>
+<line x1="650" y1="100" x2="650" y2="350" stroke="#0f172a" stroke-width="1.5"/>
+<text x="638" y="94" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#64748b" text-anchor="end">adaptive better</text>
+<text x="662" y="94" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#64748b" text-anchor="start">baseline better</text>
+<text x="40" y="125" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#0f172a" text-anchor="start">arithmetic r1</text>
+<line x1="650" y1="120" x2="654.0" y2="120" stroke="#64748b" stroke-width="5" stroke-linecap="round"/>
+<circle cx="654.0" cy="120" r="7" fill="#64748b"/>
+<text x="664.0" y="112" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">+200</text>
+<text x="40" y="172" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#0f172a" text-anchor="start">code_review r1</text>
+<line x1="650" y1="167" x2="646.0" y2="167" stroke="#2563eb" stroke-width="5" stroke-linecap="round"/>
+<circle cx="646.0" cy="167" r="7" fill="#2563eb"/>
+<text x="636.0" y="159" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="end">-200</text>
+<text x="40" y="219" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#0f172a" text-anchor="start">constraint_reasoning r1</text>
+<line x1="650" y1="214" x2="515.7239999999999" y2="214" stroke="#2563eb" stroke-width="5" stroke-linecap="round"/>
+<circle cx="515.7239999999999" cy="214" r="7" fill="#2563eb"/>
+<text x="505.72399999999993" y="206" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="end">-6,714</text>
+<text x="40" y="266" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#0f172a" text-anchor="start">dependency_analysis r1</text>
+<line x1="650" y1="261" x2="652.96" y2="261" stroke="#64748b" stroke-width="5" stroke-linecap="round"/>
+<circle cx="652.96" cy="261" r="7" fill="#64748b"/>
+<text x="662.96" y="253" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">+148</text>
+<text x="40" y="313" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#0f172a" text-anchor="start">structured_analysis r1</text>
+<line x1="650" y1="308" x2="650.2" y2="308" stroke="#64748b" stroke-width="5" stroke-linecap="round"/>
+<circle cx="650.2" cy="308" r="7" fill="#64748b"/>
+<text x="660.2" y="300" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">+10</text>
+<text x="40" y="380" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">Completed pairs median cost-proxy delta: +10; mean: -1,311</text>
+</svg>

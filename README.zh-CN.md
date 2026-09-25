@@ -95,7 +95,7 @@ git pull
 
 - 每个请求执行 preflight，综合输入长度、复杂度、质量风险、工具量、轮数和缓存复用性；
 - 输出推理强度、详细度、输出上限、上下文选择、压缩模式、窗口、压缩阈值和缓存策略；
-- `--execute-request` 在请求后自动解析反馈并更新对角 LinUCB；旧反馈按几何衰减；
+- `--execute-request` 在请求后自动解析反馈并更新带置信闸门的全协方差 LinUCB；漂移统计按 tier 隔离并衰减；
 - 安全探索限制候选 profile，并用质量下界、失败率和平均延迟三重闸门剔除危险动作；
 - 接收 `context_segments` 时，按查询相关度、结构、时序与保护标记执行确定性上下文筛选；
 - 输出稳定前缀/动态后缀布局，便于上游复用 prompt cache；
@@ -162,6 +162,7 @@ python3 benchmarks/off_policy_eval.py path/to/requests.jsonl
 python3 test_elastic_budget_controller.py
 python3 test_off_policy_eval.py
 python3 benchmarks/compare_v13.py
+python3 benchmarks/compare_v14.py
 python3 benchmarks/run_ab.py --help
 ```
 
@@ -176,6 +177,7 @@ python3 benchmarks/run_ab.py --help
 - [Token 效率研究与闭环学习方案](benchmarks/TOKEN_EFFICIENCY_RESEARCH.zh-CN.md)
 - [在线学习模拟结果](benchmarks/results/2026-09-25/online-learning-simulation.svg)（只验证学习机制，不代表真实模型节省）
 - [v1.3 机制测试](benchmarks/results/2026-09-25/v1.3-mechanism-benchmark.svg)：1,000 次确定性受控试验，输入片段减少 34.62%，证据保留率 100%。这只证明筛选逻辑按设计工作，不等于真实模型费用降低 34.62%，也不证明回答质量必然提高；
+- [v1.4 研究与结果](benchmarks/V1.4_RESEARCH_AND_RESULTS.zh-CN.md) · [2,000 请求机制模拟](benchmarks/results/2026-09-26-v1.4/v14-policy-simulation.svg) · [真实 Codex A/B](benchmarks/results/2026-09-26-v1.4/real-ab/REPORT.zh-CN.md)；
 - [按任务图表](benchmarks/results/2026-09-25/charts/by-case.svg) · [配对差值图](benchmarks/results/2026-09-25/charts/paired-deltas.svg) · [有效性问题图](benchmarks/results/2026-09-25/charts/validity-threats.svg)
 
 ## 安全提示

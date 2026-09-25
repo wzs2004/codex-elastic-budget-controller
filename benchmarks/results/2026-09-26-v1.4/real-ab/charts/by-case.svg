@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+<title id="title">Completed-run comparison by case / 按任务对比</title>
+<desc id="desc">Means use successful runs only; n is shown per cell</desc>
+<rect width="1200" height="800" fill="#ffffff" rx="16"/>
+<text x="40" y="46" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="24" font-weight="700" fill="#0f172a">Completed-run comparison by case / 按任务对比</text>
+<text x="40" y="72" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" fill="#64748b">Means use successful runs only; n is shown per cell</text>
+<rect x="920" y="35" width="14" height="14" rx="3" fill="#64748b"/>
+<text x="941" y="46" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">baseline</text>
+<rect x="1032" y="35" width="14" height="14" rx="3" fill="#2563eb"/>
+<text x="1053" y="46" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">adaptive</text>
+<text x="40" y="100" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="15" font-weight="700" fill="#0f172a" text-anchor="start">Tokens</text>
+<text x="40" y="116" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#0f172a" text-anchor="start">arithmetic</text>
+<rect x="40" y="134" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="40" y="134" width="200.5" height="22" rx="5" fill="#64748b"/>
+<text x="246.50271212708253" y="150" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">15,923 (n=1)</text>
+<rect x="40" y="168" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="40" y="168" width="200.8" height="22" rx="5" fill="#2563eb"/>
+<text x="246.75455249903138" y="184" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">15,943 (n=1)</text>
+<text x="40" y="246" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#0f172a" text-anchor="start">code_review</text>
+<rect x="40" y="264" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="40" y="264" width="202.4" height="22" rx="5" fill="#64748b"/>
+<text x="248.41669895389384" y="280" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">16,075 (n=1)</text>
+<rect x="40" y="298" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="40" y="298" width="202.2" height="22" rx="5" fill="#2563eb"/>
+<text x="248.164858581945" y="314" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">16,055 (n=1)</text>
+<text x="40" y="376" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#0f172a" text-anchor="start">constraint</text>
+<rect x="40" y="394" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="40" y="394" width="167.6" height="22" rx="5" fill="#64748b"/>
+<text x="213.59976753196437" y="410" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">13,310 (n=1)</text>
+<rect x="40" y="428" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="40" y="428" width="260.0" height="22" rx="5" fill="#2563eb"/>
+<text x="304" y="444" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">20,648 (n=1)</text>
+<text x="40" y="506" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#0f172a" text-anchor="start">dependency_analysis</text>
+<rect x="40" y="524" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="40" y="524" width="202.2" height="22" rx="5" fill="#64748b"/>
+<text x="248.24041069352964" y="540" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">16,061 (n=1)</text>
+<rect x="40" y="558" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="40" y="558" width="202.4" height="22" rx="5" fill="#2563eb"/>
+<text x="248.44188299108873" y="574" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">16,077 (n=1)</text>
+<text x="40" y="636" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#0f172a" text-anchor="start">structured</text>
+<rect x="40" y="654" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="40" y="654" width="169.3" height="22" rx="5" fill="#64748b"/>
+<text x="215.2619139868268" y="670" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">13,442 (n=1)</text>
+<rect x="40" y="688" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="40" y="688" width="169.3" height="22" rx="5" fill="#2563eb"/>
+<text x="215.27450600542426" y="704" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">13,443 (n=1)</text>
+<text x="395" y="100" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="15" font-weight="700" fill="#0f172a" text-anchor="start">Cost proxy</text>
+<text x="395" y="116" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#0f172a" text-anchor="start">arithmetic</text>
+<rect x="395" y="134" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="395" y="134" width="244.7" height="22" rx="5" fill="#64748b"/>
+<text x="645.7386074485312" y="150" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">16,277 (n=1)</text>
+<rect x="395" y="168" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="395" y="168" width="247.7" height="22" rx="5" fill="#2563eb"/>
+<text x="648.7457783946334" y="184" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">16,477 (n=1)</text>
+<text x="395" y="246" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#0f172a" text-anchor="start">code_review</text>
+<rect x="395" y="264" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="395" y="264" width="255.3" height="22" rx="5" fill="#64748b"/>
+<text x="656.323849178811" y="280" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">16,981 (n=1)</text>
+<rect x="395" y="298" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="395" y="298" width="252.3" height="22" rx="5" fill="#2563eb"/>
+<text x="653.3166782327087" y="314" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">16,781 (n=1)</text>
+<text x="395" y="376" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#0f172a" text-anchor="start">constraint</text>
+<rect x="395" y="394" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="395" y="394" width="210.6" height="22" rx="5" fill="#64748b"/>
+<text x="611.5921813555401" y="410" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">14,006 (n=1)</text>
+<rect x="395" y="428" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="395" y="428" width="109.6" height="22" rx="5" fill="#2563eb"/>
+<text x="510.64445986583394" y="444" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">7,292 (n=1)</text>
+<text x="395" y="506" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#0f172a" text-anchor="start">dependency_analysis</text>
+<rect x="395" y="524" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="395" y="524" width="257.8" height="22" rx="5" fill="#64748b"/>
+<text x="658.7746934998843" y="540" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">17,144 (n=1)</text>
+<rect x="395" y="558" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="395" y="558" width="260.0" height="22" rx="5" fill="#2563eb"/>
+<text x="659" y="574" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">17,292 (n=1)</text>
+<text x="395" y="636" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#0f172a" text-anchor="start">structured</text>
+<rect x="395" y="654" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="395" y="654" width="221.0" height="22" rx="5" fill="#64748b"/>
+<text x="622.0120286837844" y="670" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">14,699 (n=1)</text>
+<rect x="395" y="688" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="395" y="688" width="221.2" height="22" rx="5" fill="#2563eb"/>
+<text x="622.1623872310895" y="704" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">14,709 (n=1)</text>
+<text x="750" y="100" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="15" font-weight="700" fill="#0f172a" text-anchor="start">Latency (s)</text>
+<text x="750" y="116" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#0f172a" text-anchor="start">arithmetic</text>
+<rect x="750" y="134" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="750" y="134" width="41.2" height="22" rx="5" fill="#64748b"/>
+<text x="797.1597669341269" y="150" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">22.8 (n=1)</text>
+<rect x="750" y="168" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="750" y="168" width="110.3" height="22" rx="5" fill="#2563eb"/>
+<text x="866.2553155984481" y="184" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">61.0 (n=1)</text>
+<text x="750" y="246" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#0f172a" text-anchor="start">code_review</text>
+<rect x="750" y="264" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="750" y="264" width="69.4" height="22" rx="5" fill="#64748b"/>
+<text x="825.4372210093031" y="280" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">38.4 (n=1)</text>
+<rect x="750" y="298" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="750" y="298" width="138.4" height="22" rx="5" fill="#2563eb"/>
+<text x="894.3646451864109" y="314" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">76.5 (n=1)</text>
+<text x="750" y="376" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#0f172a" text-anchor="start">constraint</text>
+<rect x="750" y="394" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="750" y="394" width="17.7" height="22" rx="5" fill="#64748b"/>
+<text x="773.7271905549916" y="410" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">9.8 (n=1)</text>
+<rect x="750" y="428" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="750" y="428" width="260.0" height="22" rx="5" fill="#2563eb"/>
+<text x="1014" y="444" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">143.8 (n=1)</text>
+<text x="750" y="506" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#0f172a" text-anchor="start">dependency_analysis</text>
+<rect x="750" y="524" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="750" y="524" width="16.4" height="22" rx="5" fill="#64748b"/>
+<text x="772.407503719876" y="540" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">9.1 (n=1)</text>
+<rect x="750" y="558" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="750" y="558" width="30.4" height="22" rx="5" fill="#2563eb"/>
+<text x="786.4178776543228" y="574" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">16.8 (n=1)</text>
+<text x="750" y="636" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="600" fill="#0f172a" text-anchor="start">structured</text>
+<rect x="750" y="654" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="750" y="654" width="111.3" height="22" rx="5" fill="#64748b"/>
+<text x="867.298410535245" y="670" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">61.6 (n=1)</text>
+<rect x="750" y="688" width="260" height="22" rx="5" fill="#f1f5f9"/>
+<rect x="750" y="688" width="10.2" height="22" rx="5" fill="#2563eb"/>
+<text x="766.1525496794649" y="704" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="400" fill="#0f172a" text-anchor="start">5.6 (n=1)</text>
+</svg>

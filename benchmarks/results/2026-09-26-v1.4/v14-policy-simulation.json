@@ -1,0 +1,42 @@
+{
+  "kind": "seeded_mechanism_simulation_not_real_model_evidence",
+  "requests": 2000,
+  "drift_at_request": 1000,
+  "fixed_standard": {
+    "mean_quality": 0.871033,
+    "mean_cost_tokens": 37069.87,
+    "mean_latency_seconds": 7.168,
+    "failure_rate": 0.0,
+    "mean_reward": 0.069902,
+    "profile_counts": {
+      "standard": 2000
+    }
+  },
+  "legacy_diagonal": {
+    "mean_quality": 0.946957,
+    "mean_cost_tokens": 37498.62,
+    "mean_latency_seconds": 7.6996,
+    "failure_rate": 0.0,
+    "mean_reward": 0.132821,
+    "profile_counts": {
+      "economy": 4,
+      "balanced": 402,
+      "standard": 498,
+      "extended": 1096
+    }
+  },
+  "v14_full_covariance": {
+    "mean_quality": 0.947065,
+    "mean_cost_tokens": 36834.87,
+    "mean_latency_seconds": 6.8766,
+    "failure_rate": 0.0005,
+    "mean_reward": 0.152562,
+    "profile_counts": {
+      "balanced": 402,
+      "standard": 384,
+      "extended": 818,
+      "economy": 396
+    }
+  },
+  "v14_drift_detections": 4
+}

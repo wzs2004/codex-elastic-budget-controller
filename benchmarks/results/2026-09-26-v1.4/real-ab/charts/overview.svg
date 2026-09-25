@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="570" viewBox="0 0 1280 570" role="img" aria-labelledby="title desc">
+<title id="title">A/B benchmark overview / 实验总览</title>
+<desc id="desc">10 trials; resource metrics exclude 0 censored timeout sample(s)</desc>
+<rect width="1280" height="570" fill="#ffffff" rx="16"/>
+<text x="40" y="46" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="24" font-weight="700" fill="#0f172a">A/B benchmark overview / 实验总览</text>
+<text x="40" y="72" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" fill="#64748b">10 trials; resource metrics exclude 0 censored timeout sample(s)</text>
+<rect x="1000" y="35" width="14" height="14" rx="3" fill="#64748b"/>
+<text x="1021" y="46" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">baseline</text>
+<rect x="1112" y="35" width="14" height="14" rx="3" fill="#2563eb"/>
+<text x="1133" y="46" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">adaptive</text>
+<text x="40" y="137" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="600" fill="#0f172a" text-anchor="start">Quality / 质量</text>
+<rect x="290" y="112" width="830" height="19" rx="5" fill="#f1f5f9"/>
+<rect x="290" y="112" width="664.0" height="19" rx="5" fill="#64748b"/>
+<text x="962.0" y="126" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#0f172a" text-anchor="start">80.0%</text>
+<rect x="290" y="139" width="830" height="19" rx="5" fill="#f1f5f9"/>
+<rect x="290" y="139" width="830.0" height="19" rx="5" fill="#2563eb"/>
+<text x="1118" y="153" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#0f172a" text-anchor="start">100.0%</text>
+<text x="40" y="215" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="600" fill="#0f172a" text-anchor="start">Success / 成功率</text>
+<rect x="290" y="190" width="830" height="19" rx="5" fill="#f1f5f9"/>
+<rect x="290" y="190" width="830.0" height="19" rx="5" fill="#64748b"/>
+<text x="1118" y="204" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#0f172a" text-anchor="start">100.0%</text>
+<rect x="290" y="217" width="830" height="19" rx="5" fill="#f1f5f9"/>
+<rect x="290" y="217" width="830.0" height="19" rx="5" fill="#2563eb"/>
+<text x="1118" y="231" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#0f172a" text-anchor="start">100.0%</text>
+<text x="40" y="293" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="600" fill="#0f172a" text-anchor="start">Tokens (completed)</text>
+<rect x="290" y="268" width="830" height="19" rx="5" fill="#f1f5f9"/>
+<rect x="290" y="268" width="657.1" height="19" rx="5" fill="#64748b"/>
+<text x="955.1334382464344" y="282" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#0f172a" text-anchor="start">14,962</text>
+<rect x="290" y="295" width="830" height="19" rx="5" fill="#f1f5f9"/>
+<rect x="290" y="295" width="721.7" height="19" rx="5" fill="#2563eb"/>
+<text x="1019.7391304347826" y="309" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#0f172a" text-anchor="start">16,433</text>
+<text x="40" y="371" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="600" fill="#0f172a" text-anchor="start">Cost proxy (completed)</text>
+<rect x="290" y="346" width="830" height="19" rx="5" fill="#f1f5f9"/>
+<rect x="290" y="346" width="721.7" height="19" rx="5" fill="#64748b"/>
+<text x="1019.7391304347827" y="360" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#0f172a" text-anchor="start">15,821</text>
+<rect x="290" y="373" width="830" height="19" rx="5" fill="#f1f5f9"/>
+<rect x="290" y="373" width="661.9" height="19" rx="5" fill="#2563eb"/>
+<text x="959.9267574298104" y="387" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#0f172a" text-anchor="start">14,510</text>
+<text x="40" y="449" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="600" fill="#0f172a" text-anchor="start">Latency s (completed)</text>
+<rect x="290" y="424" width="830" height="19" rx="5" fill="#f1f5f9"/>
+<rect x="290" y="424" width="336.5" height="19" rx="5" fill="#64748b"/>
+<text x="634.471541576138" y="438" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#0f172a" text-anchor="start">28.3s</text>
+<rect x="290" y="451" width="830" height="19" rx="5" fill="#f1f5f9"/>
+<rect x="290" y="451" width="721.7" height="19" rx="5" fill="#2563eb"/>
+<text x="1019.7391304347827" y="465" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#0f172a" text-anchor="start">60.8s</text>
+<text x="40" y="535" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">Timeouts: baseline 0, adaptive 0. Timeout records are excluded from resource means above.</text>
+</svg>

@@ -267,18 +267,69 @@ def prompt_layout_plan(request: Dict[str, Any], selection: Dict[str, Any]) -> Di
 
 
 def arm_guardrail_status(item: Dict[str, Any], learner: Dict[str, Any]) -> Tuple[bool, str]:
-    """Apply quality, failure and latency constraints to an observed arm."""
+    """Apply confidence-aware quality, failure and latency constraints."""
     attempts = int(item.get("count") or 0)
     minimum = int(learner.get("guardrail_minimum_trials", learner.get("minimum_trials", 2)))
     if attempts < minimum:
         return True, "insufficient evidence for exclusion"
-    if int(item.get("failures") or 0) / max(1, attempts) > float(learner.get("max_failure_rate", 0.10)):
+    failures = int(item.get("failures") or 0)
+    z = float(learner.get("confidence_z", 1.64))
+    failure_rate = failures / max(1, attempts)
+    denominator = 1.0 + z * z / attempts
+    failure_upper = (
+        failure_rate + z * z / (2 * attempts)
+        + z * math.sqrt((failure_rate * (1 - failure_rate) + z * z / (4 * attempts)) / attempts)
+    ) / denominator
+    if failure_upper > float(learner.get("max_failure_rate_upper", 0.35)):
         return False, "failure-rate guardrail"
-    if float(item.get("quality_mean") or 0.0) < float(learner.get("minimum_quality", 0.65)):
+    quality_mean = float(item.get("quality_mean") or 0.0)
+    variance = float(item.get("quality_m2") or 0.0) / max(1, attempts - 1)
+    quality_lower = quality_mean - z * math.sqrt(max(0.0, variance) / attempts)
+    if quality_lower < float(learner.get("minimum_quality", 0.65)):
         return False, "quality-floor guardrail"
     if float(item.get("latency_seconds_total") or 0.0) / max(1, attempts) > float(learner.get("max_mean_latency_seconds", 90)):
         return False, "latency guardrail"
     return True, "within guardrails"
+
+
+def identity_matrix(size: int) -> List[List[float]]:
+    return [[1.0 if row == column else 0.0 for column in range(size)] for row in range(size)]
+
+
+def inverse_matrix(matrix: List[List[float]]) -> List[List[float]]:
+    """Invert a small positive-definite matrix with pivoted Gauss-Jordan."""
+    size = len(matrix)
+    augmented = [list(map(float, row)) + identity_matrix(size)[index]
+                 for index, row in enumerate(matrix)]
+    for column in range(size):
+        pivot = max(range(column, size), key=lambda row: abs(augmented[row][column]))
+        if abs(augmented[pivot][column]) < 1e-10:
+            return identity_matrix(size)
+        augmented[column], augmented[pivot] = augmented[pivot], augmented[column]
+        scale = augmented[column][column]
+        augmented[column] = [value / scale for value in augmented[column]]
+        for row in range(size):
+            if row == column:
+                continue
+            factor = augmented[row][column]
+            augmented[row] = [
+                augmented[row][index] - factor * augmented[column][index]
+                for index in range(2 * size)
+            ]
+    return [row[size:] for row in augmented]
+
+
+def arm_matrix(item: Dict[str, Any], size: int) -> List[List[float]]:
+    matrix = item.get("a_matrix")
+    if isinstance(matrix, list) and len(matrix) == size and all(
+        isinstance(row, list) and len(row) == size for row in matrix
+    ):
+        return [[float(value) for value in row] for row in matrix]
+    diagonal = list(item.get("a_diagonal") or [1.0] * size)
+    if len(diagonal) != size:
+        diagonal = [1.0] * size
+    return [[float(diagonal[row]) if row == column else 0.0
+             for column in range(size)] for row in range(size)]
 
 
 def choose_request_profile(
@@ -309,37 +360,54 @@ def choose_request_profile(
     request_key = json.dumps(request, ensure_ascii=False, sort_keys=True)
     seed = int(hashlib.sha256(request_key.encode()).hexdigest()[:8], 16)
     if under_tested:
+        levels = {name: int(profiles[name].get("capacity_level", 0)) for name in under_tested}
+        selected = min(
+            under_tested,
+            key=lambda name: (int((stats.get(f"{tier}:{name}") or {}).get("count") or 0),
+                              levels[name], name),
+        )
         return (
-            under_tested[seed % len(under_tested)],
-            "safe minimum-trial exploration",
-            round(1.0 / len(under_tested), 6),
+            selected,
+            "cost-ordered safe minimum-trial exploration",
+            1.0,
         )
     exploration = float(learner.get("ucb_exploration", 0.35))
     features = request_feature_vector(normalize_request(request))
 
     def value(name: str) -> float:
         item = stats.get(f"{tier}:{name}") or {}
-        diagonal = list(item.get("a_diagonal") or [1.0] * len(features))
+        matrix = arm_matrix(item, len(features))
         response = list(item.get("b_vector") or [0.0] * len(features))
-        if len(diagonal) != len(features) or len(response) != len(features):
-            diagonal, response = [1.0] * len(features), [0.0] * len(features)
-        mean = sum((response[index] / max(diagonal[index], 1e-9)) * value
-                   for index, value in enumerate(features))
-        uncertainty = math.sqrt(sum(
-            value * value / max(diagonal[index], 1e-9)
-            for index, value in enumerate(features)
-        ))
-        return mean + exploration * uncertainty
+        if len(response) != len(features):
+            response = [0.0] * len(features)
+        inverse = inverse_matrix(matrix)
+        theta = [sum(inverse[row][column] * response[column]
+                     for column in range(len(features))) for row in range(len(features))]
+        mean = sum(theta[index] * feature for index, feature in enumerate(features))
+        projected = [sum(inverse[row][column] * features[column]
+                         for column in range(len(features))) for row in range(len(features))]
+        uncertainty = math.sqrt(max(0.0, sum(features[index] * projected[index]
+                                             for index in range(len(features)))))
+        capacity = int(profiles[name].get("capacity_level", 0))
+        cost_prior = float(learner.get("capacity_cost_prior", 0.025)) * capacity
+        cost_prior *= 1.0 - float(features[2])
+        return mean + exploration * uncertainty - cost_prior
 
     greedy = max(eligible, key=value)
+    total_trials = sum(int((stats.get(f"{tier}:{name}") or {}).get("count") or 0)
+                       for name in eligible)
     epsilon = clamp(float(learner.get("epsilon", 0.08)), 0.0, 0.5)
+    epsilon /= math.sqrt(1.0 + total_trials / max(
+        1.0, float(learner.get("exploration_decay_trials", 20))))
+    epsilon *= 1.0 - float(learner.get("high_risk_exploration_suppression", 0.75)) * features[2]
+    epsilon = clamp(epsilon, float(learner.get("minimum_epsilon", 0.01)), 0.5)
     unit = seed / float(0xFFFFFFFF)
     if len(eligible) > 1 and unit < epsilon:
         selected = eligible[seed % len(eligible)]
-        reason = "safe epsilon exploration around diagonal LinUCB"
+        reason = "risk-adjusted safe exploration around full LinUCB"
     else:
         selected = greedy
-        reason = "safe diagonal LinUCB selection"
+        reason = "confidence-guarded full LinUCB selection"
     propensity = epsilon / len(eligible)
     if selected == greedy:
         propensity += 1.0 - epsilon
@@ -396,34 +464,91 @@ def update_request_learning(
     features = request_feature_vector(normalize_request(raw_features))
     for arm_key, arm_value in list(arms.items()):
         arm = dict(arm_value)
-        if "a_diagonal" in arm:
-            arm["a_diagonal"] = [1.0 + (float(value) - 1.0) * decay for value in arm["a_diagonal"]]
+        if "a_matrix" in arm or "a_diagonal" in arm:
+            matrix = arm_matrix(arm, len(features))
+            arm["a_matrix"] = [
+                [round((1.0 if row == column else 0.0)
+                       + (matrix[row][column] - (1.0 if row == column else 0.0)) * decay, 8)
+                 for column in range(len(features))]
+                for row in range(len(features))
+            ]
             arm["b_vector"] = [float(value) * decay for value in arm.get("b_vector", [])]
+            arm.pop("a_diagonal", None)
             arms[arm_key] = arm
     key = f"{tier}:{profile}"
     item = dict(arms.get(key) or {})
     count = int(item.get("count") or 0) + 1
     total_reward = float(item.get("total_reward") or 0.0) + reward
+    old_quality_mean = float(item.get("quality_mean") or 0.0)
+    quality_delta = quality - old_quality_mean
+    new_quality_mean = old_quality_mean + quality_delta / count
+    quality_m2 = float(item.get("quality_m2") or 0.0) + quality_delta * (quality - new_quality_mean)
     item.update({
         "count": count,
         "total_reward": round(total_reward, 6),
         "mean_reward": round(total_reward / count, 6),
         "failures": int(item.get("failures") or 0) + int(not success),
-        "quality_mean": round(
-            (float(item.get("quality_mean") or 0.0) * (count - 1) + quality) / count, 6
-        ),
+        "quality_mean": round(new_quality_mean, 6),
+        "quality_m2": round(quality_m2, 8),
         "cost_tokens_total": round(float(item.get("cost_tokens_total") or 0.0) + cost, 2),
         "latency_seconds_total": round(float(item.get("latency_seconds_total") or 0.0) + latency, 3),
         "last_feedback_at": iso(utcnow()),
     })
-    diagonal = list(item.get("a_diagonal") or [1.0] * len(features))
+    matrix = arm_matrix(item, len(features))
     response = list(item.get("b_vector") or [0.0] * len(features))
-    item["a_diagonal"] = [round(diagonal[index] + value * value, 8)
-                          for index, value in enumerate(features)]
+    item["a_matrix"] = [
+        [round(matrix[row][column] + features[row] * features[column], 8)
+         for column in range(len(features))]
+        for row in range(len(features))
+    ]
+    item.pop("a_diagonal", None)
     item["b_vector"] = [round(response[index] + reward * value, 8)
                         for index, value in enumerate(features)]
     arms[key] = item
-    request_learning.update({"arms": arms, "updated_at": iso(utcnow())})
+    drift_settings = learner.get("drift_detection", {})
+    drifts = dict(request_learning.get("drifts") or {})
+    drift = dict(drifts.get(tier) or {})
+    drift_count = int(drift.get("count") or 0) + 1
+    drift_mean = float(drift.get("mean_reward") or reward)
+    drift_mean += (reward - drift_mean) / drift_count
+    cumulative = float(drift.get("cumulative_sum") or 0.0)
+    cumulative += reward - drift_mean + float(drift_settings.get("delta", 0.01))
+    maximum = max(float(drift.get("maximum_sum") or 0.0), cumulative)
+    cumulative_drop = maximum - cumulative
+    threshold = float(drift_settings.get("threshold", 1.25))
+    detected = bool(drift_settings.get("enabled", True) and drift_count >= int(
+        drift_settings.get("minimum_observations", 20)) and cumulative_drop > threshold)
+    if detected:
+        shrink = clamp(float(drift_settings.get("matrix_retention", 0.25)), 0.0, 1.0)
+        tier_prefix = f"{tier}:"
+        for arm_key, arm_value in list(arms.items()):
+            if not arm_key.startswith(tier_prefix):
+                continue
+            arm = dict(arm_value)
+            matrix = arm_matrix(arm, len(features))
+            arm["a_matrix"] = [
+                [round((1.0 if row == column else 0.0)
+                       + (matrix[row][column] - (1.0 if row == column else 0.0)) * shrink, 8)
+                 for column in range(len(features))]
+                for row in range(len(features))
+            ]
+            arm["b_vector"] = [round(float(value) * shrink, 8)
+                               for value in arm.get("b_vector", [])]
+            arm["count"] = min(int(arm.get("count") or 0),
+                               max(0, int(learner.get("minimum_trials", 2)) - 1))
+            arms[arm_key] = arm
+        cumulative = 0.0
+        maximum = 0.0
+    drift.update({"count": drift_count, "mean_reward": round(drift_mean, 8),
+                  "cumulative_sum": round(cumulative, 8),
+                  "maximum_sum": round(maximum, 8),
+                  "cumulative_drop": round(maximum - cumulative, 8),
+                  "detections": int(drift.get("detections") or 0) + int(detected),
+                  "detected": detected})
+    if detected:
+        drift["last_detected_at"] = iso(utcnow())
+    drifts[tier] = drift
+    request_learning.update({"arms": arms, "drifts": drifts, "updated_at": iso(utcnow())})
     updated = dict(state)
     updated["request_learning"] = request_learning
     return updated
@@ -489,9 +614,13 @@ def execute_request(
     attempts = [run_attempt(plan)]
     first = attempts[0]
     cascade = plan.get("cascade") or {}
+    quality_trigger = (
+        first["feedback"]["quality_score"] < float(cascade.get("quality_below", 0.72))
+        and float(plan["features"].get("quality_risk", 0.0)) >= float(cascade.get("minimum_quality_risk", 0.0))
+    )
     should_fallback = bool(request.get("enable_cascade") and cascade.get("enabled") and (
         (cascade.get("fallback_on_failure") and not first["feedback"]["success"])
-        or first["feedback"]["quality_score"] < float(cascade.get("quality_below", 0.72))))
+        or quality_trigger))
     if should_fallback and cascade.get("fallback_profile") != plan["budget_actions"]["profile"]:
         fallback_plan = json.loads(json.dumps(plan))
         fallback = next(item for item in policy["profiles"]
@@ -609,6 +738,11 @@ def request_budget(
         current_index = 0
     fallback_profile = candidates[min(len(candidates) - 1, current_index + 1)] if candidates else profile_name
     cascade = settings.get("cascade", {})
+    cascade_threshold = clamp(
+        float(cascade.get("quality_below", 0.72))
+        + float(cascade.get("quality_risk_adjustment", 0.08)) * features["quality_risk"],
+        0.0, 1.0,
+    )
     return {
         "policy_version": policy.get("version", 1),
         "decision_scope": "every_request",
@@ -623,7 +757,8 @@ def request_budget(
         "cascade": {
             "enabled": bool(cascade.get("enabled", True)),
             "fallback_profile": fallback_profile,
-            "quality_below": float(cascade.get("quality_below", 0.72)),
+            "quality_below": round(cascade_threshold, 4),
+            "minimum_quality_risk": float(cascade.get("minimum_quality_risk", 0.35)),
             "fallback_on_failure": bool(cascade.get("fallback_on_failure", True)),
             "execution_requires_opt_in": True,
         },

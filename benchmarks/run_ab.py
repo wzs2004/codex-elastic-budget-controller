@@ -2,6 +2,7 @@
 """Run reproducible paired Codex CLI A/B trials and preserve raw evidence."""
 
 import argparse
+import importlib.util
 import json
 import math
 import statistics
@@ -14,12 +15,18 @@ ROOT = Path(__file__).resolve().parent.parent
 POLICY = json.loads((ROOT / "elastic-budget-policy.example.json").read_text())
 PROFILES = {item["name"]: item for item in POLICY["profiles"]}
 WEIGHTS = POLICY["learning"]["cost_weights"]
+SPEC = importlib.util.spec_from_file_location(
+    "elastic_budget_controller", ROOT / "elastic-budget-controller.py"
+)
+CONTROLLER = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(CONTROLLER)
 
 
 def profile_args(profile):
     return [
         "-c", f'model_context_window={profile["context_window"]}',
         "-c", f'model_auto_compact_token_limit={profile["compact_token_limit"]}',
+        "-c", 'model_auto_compact_token_limit_scope="body_after_prefix"',
         "-c", f'model_reasoning_effort="{profile["reasoning_effort"]}"',
         "-c", f'model_verbosity="{profile["verbosity"]}"',
         "-c", f'model_reasoning_summary="{profile["reasoning_summary"]}"',
@@ -48,8 +55,10 @@ def exact_score(actual, expected):
     return sum(actual.get(key) == value for key, value in expected.items()) / len(expected)
 
 
-def run_trial(case, treatment, profile_name, output_dir, round_number, prices, timeout_seconds):
-    profile = PROFILES[profile_name]
+def run_trial(case, treatment, profile_name, controller_plan, output_dir, round_number, prices, timeout_seconds):
+    profile = dict(PROFILES[profile_name])
+    if controller_plan:
+        profile["compact_token_limit"] = controller_plan["budget_actions"]["compact_token_limit"]
     trial_id = f'{case["id"]}-r{round_number}-{treatment}'
     raw_path = output_dir / "raw" / f"{trial_id}.jsonl"
     answer_path = output_dir / "answers" / f"{trial_id}.json"
@@ -120,6 +129,7 @@ def run_trial(case, treatment, profile_name, output_dir, round_number, prices, t
         "expected": case["expected"], "latency_seconds": round(latency, 3),
         "tokens": tokens, "total_tokens": tokens["input"] + tokens["output"],
         "cost_proxy": round(cost_proxy, 1), "estimated_cost": monetary_cost,
+        "controller_plan": controller_plan,
         "config": {key: profile[key] for key in (
             "context_window", "compact_token_limit", "reasoning_effort", "verbosity", "reasoning_summary"
         )},
@@ -192,6 +202,10 @@ def write_report(output_dir, metadata, rows, summary):
         for name, values in summary["by_case"].items()
     )
     report = f'''# A/B 实验结果\n\n- 日期：{metadata["created_at"]}\n- Codex CLI：{metadata["codex_version"]}\n- 模型与 provider：与本机配置保持一致，未写入仓库\n- 轮数：每个 case 每组 {metadata["rounds"]} 轮\n- 总试验数：{len(rows)}\n- 真实货币费用：{"已按显式单价估算" if metadata["prices_supplied"] else "未报告；provider 单价未知"}\n\n## 汇总\n\n| 指标 | 固定配置 baseline | 弹性 adaptive | 相对变化 |\n|---|---:|---:|---:|\n| 质量分数（均值） | {base["quality"]["mean"]:.4f} | {adaptive["quality"]["mean"]:.4f} | {delta("quality") if delta("quality") is not None else "N/A"}% |\n| 总 token（完成样本均值） | {base["total_tokens"]["mean"]:.1f} | {adaptive["total_tokens"]["mean"]:.1f} | {delta("total_tokens")}% |\n| 成本代理值（完成样本均值） | {base["cost_proxy"]["mean"]:.1f} | {adaptive["cost_proxy"]["mean"]:.1f} | {delta("cost_proxy")}% |\n| 延迟秒数（完成样本均值） | {base["latency_seconds"]["mean"]:.3f} | {adaptive["latency_seconds"]["mean"]:.3f} | {delta("latency_seconds")}% |\n| 成功率 | {base["success_rate"]:.2%} | {adaptive["success_rate"]:.2%} | — |\n| 超时次数 | {base["timeouts"]} | {adaptive["timeouts"]} | — |\n\n质量仍将超时记为 0；资源和延迟均值只使用完成样本，并在 `summary.json` 记录 `n`。超时是右删失观测，不应伪装成 0 token 或 0 成本。\n\n## 按任务分解\n\n| Case | baseline 质量 | adaptive 质量 | baseline token | adaptive token | 超时 baseline/adaptive |\n|---|---:|---:|---:|---:|---:|\n{case_rows}\n\n## Pairwise\n\n- baseline 胜：{summary["pairwise"]["baseline_wins"]}\n- adaptive 胜：{summary["pairwise"]["adaptive_wins"]}\n- 平局：{summary["pairwise"]["ties"]}\n\n同一 case、同一轮先比较质量；质量相同时优先完成状态，再比较成本代理值。\n\n![实验总览](charts/overview.svg)\n\n![按任务对比](charts/by-case.svg)\n\n![配对差值](charts/paired-deltas.svg)\n\n## 证据文件\n\n- `trials.jsonl`：逐轮结构化指标；\n- `summary.json`：统计汇总；\n- `raw/`：Codex JSONL 原始事件；\n- `answers/`：模型最终结构化答案；\n- `metadata.json`：运行环境和口径。\n\n## 解释边界\n\n这是一组小样本、同模型、固定输入的回归实验。它可以证明脚本和评测流程可复现，并展示特定任务上的质量/成本变化，但不能证明对所有真实任务普遍更优。本轮结果显示 adaptive 并未降低总体平均 token 或延迟，后续学习器应把这组结果作为负反馈，而不是宣称优化成功。\n'''
+    report = report.replace(
+        "这是一组小样本、同模型、固定输入的回归实验。它可以证明脚本和评测流程可复现，并展示特定任务上的质量/成本变化，但不能证明对所有真实任务普遍更优。本轮结果显示 adaptive 并未降低总体平均 token 或延迟，后续学习器应把这组结果作为负反馈，而不是宣称优化成功。",
+        "这是一组小样本、同模型、固定输入的回归实验。adaptive 档位由控制器在每个请求执行前基于输入特征实时选择，而 baseline 固定为 `standard`。profile 会同时改变上下文窗口、压缩阈值、推理强度、详细度和推理摘要，因此差异只能归因于整套 profile，不可归因于单一参数或学习器组件。结果只说明这些固定任务上的表现，不能证明对所有真实任务普遍更优。",
+    )
     (output_dir / "REPORT.zh-CN.md").write_text(report)
 
 
@@ -217,11 +231,20 @@ def main():
     rows = []
     for round_number in range(1, args.rounds + 1):
         for index, case in enumerate(cases):
+            request = {key: case[key] for key in (
+                "prompt", "estimated_input_tokens", "task_type", "complexity",
+                "quality_risk", "expected_tool_calls", "expected_turns",
+                "latency_sensitive", "reusable_prefix",
+            ) if key in case}
+            controller_plan = CONTROLLER.request_budget(request, POLICY, {})
+            adaptive_profile = controller_plan["budget_actions"]["profile"]
             order = ("baseline", "adaptive") if (round_number + index) % 2 else ("adaptive", "baseline")
             for treatment in order:
-                profile_name = "standard" if treatment == "baseline" else case["adaptive_profile"]
+                profile_name = "standard" if treatment == "baseline" else adaptive_profile
                 row = run_trial(
-                    case, treatment, profile_name, output_dir, round_number,
+                    case, treatment, profile_name,
+                    controller_plan if treatment == "adaptive" else None,
+                    output_dir, round_number,
                     prices, args.timeout_seconds,
                 )
                 rows.append(row)
@@ -229,7 +252,7 @@ def main():
     metadata = {
         "created_at": datetime.now(timezone.utc).isoformat(), "codex_version": version,
         "rounds": args.rounds, "cases": len(cases), "prices_supplied": bool(prices),
-        "method": "paired alternating-order A/B; same model/provider/prompt/schema/tools",
+        "method": "paired alternating-order A/B; baseline standard; adaptive live controller preflight; same model/provider/prompt/schema/tools",
     }
     summary = summarize(rows)
     (output_dir / "trials.jsonl").write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows))

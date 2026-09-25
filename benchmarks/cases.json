@@ -1,20 +1,67 @@
 [
   {
     "id": "arithmetic",
-    "adaptive_profile": "economy",
+    "estimated_input_tokens": 110,
+    "task_type": "classification",
+    "complexity": 0.12,
+    "quality_risk": 0.12,
+    "expected_tool_calls": 0,
+    "expected_turns": 1,
+    "latency_sensitive": true,
+    "reusable_prefix": false,
     "prompt": "Return JSON only. Put the result in answer. Compute: a shop has 17 boxes with 24 items each, sells 139 items, then receives 5 boxes with 18 items each. Return remaining_items and parity (even or odd).",
     "expected": {"remaining_items": 359, "parity": "odd"}
   },
   {
     "id": "constraint_reasoning",
-    "adaptive_profile": "standard",
-    "prompt": "Return JSON only in exactly this shape: {\"answer\":{\"schedule\":[\"A\",\"B\",\"C\",\"D\"]}} with the array replaced by the solution. Schedule A, B, C, D into slots 1-4. A is before C. B is immediately after D. C is not slot 4.",
-    "expected": {"schedule": ["A", "C", "D", "B"]}
+    "estimated_input_tokens": 190,
+    "task_type": "analysis",
+    "complexity": 0.58,
+    "quality_risk": 0.55,
+    "expected_tool_calls": 0,
+    "expected_turns": 2,
+    "latency_sensitive": false,
+    "reusable_prefix": false,
+    "prompt": "Return JSON only in exactly this shape: {\"answer\":{\"schedule\":[\"A\",\"B\",\"C\",\"D\",\"E\"]}} with the array replaced by the unique solution. Schedule A-E into slots 1-5. B is immediately after D. A is before C. E is after C. A is not slot 1. D is before A.",
+    "expected": {"schedule": ["D", "B", "A", "C", "E"]}
+  },
+  {
+    "id": "code_review",
+    "estimated_input_tokens": 420,
+    "task_type": "coding",
+    "complexity": 0.72,
+    "quality_risk": 0.72,
+    "expected_tool_calls": 1,
+    "expected_turns": 3,
+    "latency_sensitive": false,
+    "reusable_prefix": true,
+    "prompt": "Return JSON only with top-level answer. Review this Python function:\n\ndef unique_recent(events, limit):\n    seen = set()\n    result = []\n    for event in reversed(events):\n        if event['id'] not in seen:\n            seen.add(event['id'])\n            result.append(event)\n        if len(result) == limit:\n            break\n    return result\n\nRequirement: return at most limit unique events, newest first; limit <= 0 must return empty. For events with ids [a,b,a,c] in chronological order and limit=2, identify the exact returned id order and whether the function mishandles limit=0. answer must contain returned_ids and limit_zero_bug.",
+    "expected": {"returned_ids": ["c", "a"], "limit_zero_bug": true}
+  },
+  {
+    "id": "dependency_analysis",
+    "estimated_input_tokens": 560,
+    "task_type": "analysis",
+    "complexity": 0.78,
+    "quality_risk": 0.8,
+    "expected_tool_calls": 2,
+    "expected_turns": 4,
+    "latency_sensitive": false,
+    "reusable_prefix": true,
+    "prompt": "Return JSON only with top-level answer. A pipeline has tasks: ingest(4m), validate(3m after ingest), enrich(6m after validate), index(5m after enrich), audit(7m after validate), publish(2m after both index and audit). Unlimited workers are available. If enrich duration is reduced by 2 minutes, compute original_minutes, optimized_minutes, original_critical_path as an array of task names, and saved_minutes.",
+    "expected": {"original_minutes": 20, "optimized_minutes": 18, "original_critical_path": ["ingest", "validate", "enrich", "index", "publish"], "saved_minutes": 2}
   },
   {
     "id": "structured_analysis",
-    "adaptive_profile": "extended",
-    "prompt": "Return JSON only. The top-level object must contain only answer. Inside answer use exactly these keys: max_name, first_sum, second_sum, descending. For records [(alpha,17,4),(beta,23,9),(gamma,11,5),(delta,29,8),(epsilon,19,7)], compute: name with highest first-minus-second value; sum of all first values; sum of all second values; and the names sorted by first-minus-second descending.",
-    "expected": {"max_name": "delta", "first_sum": 99, "second_sum": 33, "descending": ["delta", "beta", "alpha", "epsilon", "gamma"]}
+    "estimated_input_tokens": 900,
+    "task_type": "research",
+    "complexity": 0.86,
+    "quality_risk": 0.88,
+    "expected_tool_calls": 4,
+    "expected_turns": 5,
+    "latency_sensitive": false,
+    "reusable_prefix": true,
+    "prompt": "Return JSON only. The top-level object must contain only answer. Inside answer use exactly these keys: max_name, first_sum, second_sum, descending, median_margin. For records [(alpha,17,4),(beta,23,9),(gamma,11,5),(delta,29,8),(epsilon,19,7),(zeta,31,15),(eta,13,3)], compute: name with highest first-minus-second value; sum of all first values; sum of all second values; names sorted by first-minus-second descending, breaking ties alphabetically; and median of all first-minus-second margins.",
+    "expected": {"max_name": "delta", "first_sum": 143, "second_sum": 51, "descending": ["delta", "zeta", "beta", "alpha", "epsilon", "eta", "gamma"], "median_margin": 13}
   }
 ]
