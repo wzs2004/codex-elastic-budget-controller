@@ -7,16 +7,19 @@
         "sd": 0.3333
       },
       "latency_seconds": {
-        "mean": 28.7248,
-        "sd": 37.2685
+        "mean": 17.3144,
+        "sd": 15.7541,
+        "n": 8
       },
       "total_tokens": {
-        "mean": 12733.7778,
-        "sd": 4949.0349
+        "mean": 14325.5,
+        "sd": 1390.0584,
+        "n": 8
       },
       "cost_proxy": {
-        "mean": 11990.3333,
-        "sd": 5837.8241
+        "mean": 13489.125,
+        "sd": 3980.3521,
+        "n": 8
       },
       "success_rate": 0.8889,
       "timeouts": 1
@@ -28,16 +31,19 @@
         "sd": 0.3333
       },
       "latency_seconds": {
-        "mean": 32.2391,
-        "sd": 36.9699
+        "mean": 21.2674,
+        "sd": 17.9956,
+        "n": 8
       },
       "total_tokens": {
-        "mean": 13023.5556,
-        "sd": 5068.2917
+        "mean": 14651.5,
+        "sd": 1448.4483,
+        "n": 8
       },
       "cost_proxy": {
-        "mean": 12215.4444,
-        "sd": 5853.7433
+        "mean": 13742.375,
+        "sd": 3896.1752,
+        "n": 8
       },
       "success_rate": 0.8889,
       "timeouts": 1
@@ -50,6 +56,7 @@
         "total_tokens_mean": 14163,
         "cost_proxy_mean": 14613.0,
         "latency_seconds_mean": 15.983,
+        "completed": 3,
         "timeouts": 0
       },
       "adaptive": {
@@ -57,6 +64,7 @@
         "total_tokens_mean": 14142.33,
         "cost_proxy_mean": 14410.33,
         "latency_seconds_mean": 8.13,
+        "completed": 3,
         "timeouts": 0
       }
     },
@@ -66,6 +74,7 @@
         "total_tokens_mean": 14242,
         "cost_proxy_mean": 15280.0,
         "latency_seconds_mean": 9.877,
+        "completed": 3,
         "timeouts": 0
       },
       "adaptive": {
@@ -73,22 +82,25 @@
         "total_tokens_mean": 15130.67,
         "cost_proxy_mean": 11959.33,
         "latency_seconds_mean": 27.025,
+        "completed": 3,
         "timeouts": 0
       }
     },
     "structured_analysis": {
       "baseline": {
         "quality_mean": 0.6667,
-        "total_tokens_mean": 9796.33,
-        "cost_proxy_mean": 6078.0,
-        "latency_seconds_mean": 60.315,
+        "total_tokens_mean": 14694.5,
+        "cost_proxy_mean": 9117.0,
+        "latency_seconds_mean": 30.468,
+        "completed": 2,
         "timeouts": 1
       },
       "adaptive": {
         "quality_mean": 0.6667,
-        "total_tokens_mean": 9797.67,
-        "cost_proxy_mean": 10276.67,
-        "latency_seconds_mean": 61.562,
+        "total_tokens_mean": 14696.5,
+        "cost_proxy_mean": 15415.0,
+        "latency_seconds_mean": 32.337,
+        "completed": 2,
         "timeouts": 1
       }
     }

@@ -20,6 +20,83 @@ class ElasticBudgetTests(unittest.TestCase):
         session.write_text("".join(json.dumps(event) + "\n" for event in events))
         return session
 
+    def test_every_request_gets_multidimensional_budget_actions(self):
+        plan = MODULE.request_budget({"text": "把这句话改短。", "task_type": "rewrite"}, POLICY)
+        self.assertEqual(plan["decision_scope"], "every_request")
+        self.assertTrue(plan["budget_actions"])
+        self.assertGreater(plan["action_propensity"], 0)
+        for key in (
+            "reasoning_effort", "verbosity", "max_output_tokens", "context_mode",
+            "compression_mode", "compact_token_limit", "cache_mode",
+        ):
+            self.assertIn(key, plan["budget_actions"])
+
+    def test_request_budget_expands_across_full_token_range(self):
+        micro = MODULE.request_budget({
+            "estimated_input_tokens": 300, "task_type": "classification",
+            "complexity": 0.1, "quality_risk": 0.1,
+        }, POLICY)
+        ultra = MODULE.request_budget({
+            "estimated_input_tokens": 120000, "task_type": "research",
+            "complexity": 0.95, "quality_risk": 0.95, "expected_tool_calls": 20,
+            "expected_turns": 12,
+        }, POLICY)
+        self.assertEqual(micro["tier"], "micro")
+        self.assertEqual(ultra["tier"], "ultra")
+        self.assertLess(
+            micro["budget_actions"]["max_output_tokens"],
+            ultra["budget_actions"]["max_output_tokens"],
+        )
+        self.assertNotEqual(
+            micro["budget_actions"]["compression_mode"],
+            ultra["budget_actions"]["compression_mode"],
+        )
+
+    def test_same_tier_still_has_continuous_compaction_adjustment(self):
+        low = MODULE.request_budget({
+            "estimated_input_tokens": 9000, "complexity": 0.5, "quality_risk": 0.5,
+        }, POLICY)
+        high = MODULE.request_budget({
+            "estimated_input_tokens": 22000, "complexity": 0.5, "quality_risk": 0.5,
+        }, POLICY)
+        self.assertEqual(low["tier"], high["tier"])
+        self.assertLess(
+            low["budget_actions"]["compact_token_limit"],
+            high["budget_actions"]["compact_token_limit"],
+        )
+
+    def test_request_feedback_updates_learning_and_changes_selection(self):
+        state = {}
+        for _ in range(3):
+            state = MODULE.update_request_learning(state, {
+                "tier": "micro", "profile": "economy", "quality_score": 0.95,
+                "cost_tokens": 300, "latency_seconds": 1, "success": True,
+            }, POLICY)
+            state = MODULE.update_request_learning(state, {
+                "tier": "micro", "profile": "balanced", "quality_score": 0.40,
+                "cost_tokens": 900, "latency_seconds": 5, "success": True,
+            }, POLICY)
+        plan = MODULE.request_budget({
+            "estimated_input_tokens": 300, "task_type": "classification",
+            "complexity": 0.1, "quality_risk": 0.1,
+        }, POLICY, state["request_learning"])
+        self.assertEqual(plan["budget_actions"]["profile"], "economy")
+        self.assertIn("LinUCB", plan["learning_decision"])
+
+    def test_execute_request_closes_feedback_loop(self):
+        request = {
+            "estimated_input_tokens": 100, "complexity": 0.1, "quality_risk": 0.1,
+            "command": ["python3", "-c", (
+                "import json, os; p=json.loads(os.environ['ELASTIC_BUDGET_PLAN']); "
+                "print(json.dumps({'success': bool(p['budget_actions']), 'quality_score': 0.9, "
+                "'usage': {'input_tokens': 100, 'output_tokens': 20}}))"
+            )],
+        }
+        outcome, state = MODULE.execute_request(request, POLICY, {})
+        self.assertTrue(outcome["feedback"]["success"])
+        self.assertEqual(outcome["feedback"]["cost_tokens"], 120)
+        self.assertTrue(state["request_learning"]["arms"])
+
     def test_pressure_moves_only_one_level(self):
         metrics = {
             "sessions": 1, "occupancy": 0.90, "growth_tokens_per_minute": 3000,

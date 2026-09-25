@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="560" viewBox="0 0 1120 560" role="img" aria-labelledby="title desc">
+<title id="title">Validity threats / 有效性问题</title>
+<desc id="desc">Why this run is evidence of a harness, not proof of an optimization win</desc>
+<rect width="1120" height="560" fill="#ffffff" rx="16"/>
+<text x="40" y="46" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="24" font-weight="700" fill="#0f172a">Validity threats / 有效性问题</text>
+<text x="40" y="72" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" fill="#64748b">Why this run is evidence of a harness, not proof of an optimization win</text>
+<rect x="40" y="82" width="1040" height="54" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+<rect x="58" y="96" width="54" height="24" rx="12" fill="#dc2626"/>
+<text x="85" y="112" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">HIGH</text>
+<text x="132" y="105" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#0f172a" text-anchor="start">Short tasks</text>
+<text x="132" y="125" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">No run approached the 48K minimum context tier</text>
+<rect x="40" y="152" width="1040" height="54" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+<rect x="58" y="166" width="54" height="24" rx="12" fill="#dc2626"/>
+<text x="85" y="182" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">HIGH</text>
+<text x="132" y="175" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#0f172a" text-anchor="start">Coupled parameters</text>
+<text x="132" y="195" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">Window, threshold, reasoning and verbosity changed together</text>
+<rect x="40" y="222" width="1040" height="54" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+<rect x="58" y="236" width="54" height="24" rx="12" fill="#dc2626"/>
+<text x="85" y="252" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">HIGH</text>
+<text x="132" y="245" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#0f172a" text-anchor="start">Timeout censoring</text>
+<text x="132" y="265" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">Missing usage was encoded as zero in the first report</text>
+<rect x="40" y="292" width="1040" height="54" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+<rect x="58" y="306" width="54" height="24" rx="12" fill="#dc2626"/>
+<text x="85" y="322" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">HIGH</text>
+<text x="132" y="315" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#0f172a" text-anchor="start">Cache/order effects</text>
+<text x="132" y="335" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">One cache-hit sample occurred in each treatment</text>
+<rect x="40" y="362" width="1040" height="54" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+<rect x="58" y="376" width="54" height="24" rx="12" fill="#dc2626"/>
+<text x="85" y="392" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">HIGH</text>
+<text x="132" y="385" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#0f172a" text-anchor="start">Small sample</text>
+<text x="132" y="405" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">3 cases × 3 rounds; uncertainty is dominant</text>
+<rect x="40" y="432" width="1040" height="54" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+<rect x="58" y="446" width="54" height="24" rx="12" fill="#d97706"/>
+<text x="85" y="462" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle">MED</text>
+<text x="132" y="455" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="14" font-weight="700" fill="#0f172a" text-anchor="start">Static labels</text>
+<text x="132" y="475" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">Adaptive profiles were preassigned, not selected online</text>
+</svg>

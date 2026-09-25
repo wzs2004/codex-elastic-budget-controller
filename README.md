@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-An experimental, standard-library-only controller for adapting Codex context and compaction settings from observed workload pressure and session outcomes.
+An experimental, standard-library-only controller that makes a multi-dimensional budget decision for every request and learns online from quality, token, latency, and failure feedback. It no longer waits for a 48K context threshold before becoming adaptive.
 
 ## What it adjusts
 
@@ -18,6 +18,8 @@ It deliberately leaves the model, provider, service tier, permissions, and tools
 
 The controller combines:
 
+- per-request preflight planning across reasoning, output, context selection, compression, and cache policy;
+- automatic post-request feedback and a safe diagonal LinUCB learner with drift decay;
 - four capacity profiles from economy through extended;
 - an elastic compaction threshold with reserve and quantization limits;
 - hysteresis, cooldowns, legacy-session isolation, and one profile change per session;
@@ -46,6 +48,8 @@ python3 ~/.codex/elastic-budget-controller.py --force --verbose
 
 For periodic execution, use your platform scheduler. The controller writes config and state atomically and is designed to be idempotent.
 
+`--execute-request` exports the selected plan as `ELASTIC_BUDGET_PLAN`, parses the worker's final JSON line, updates the learner immediately, and appends a decision/propensity/outcome record beside the state file for offline evaluation.
+
 ## Test
 
 ```bash
@@ -54,6 +58,16 @@ python3 benchmarks/run_ab.py --help
 ```
 
 See [`benchmarks/README.zh-CN.md`](benchmarks/README.zh-CN.md) for the reproducible paired A/B methodology, raw evidence format, limitations, and results.
+
+### Evidence charts and failure analysis
+
+![A/B benchmark overview](benchmarks/results/2026-09-25/charts/overview.svg)
+
+- [Formal experiment report (Chinese)](benchmarks/results/2026-09-25/REPORT.zh-CN.md)
+- [Problems, literature review, and next experiment design (Chinese)](benchmarks/PROBLEMS_AND_NEXT_STEPS.zh-CN.md)
+- [Token-efficiency research and closed-loop design (Chinese)](benchmarks/TOKEN_EFFICIENCY_RESEARCH.zh-CN.md)
+- [Online-learning simulation](benchmarks/results/2026-09-25/online-learning-simulation.svg) (mechanism validation only, not real-model savings)
+- [By-case chart](benchmarks/results/2026-09-25/charts/by-case.svg) · [Paired deltas](benchmarks/results/2026-09-25/charts/paired-deltas.svg) · [Validity threats](benchmarks/results/2026-09-25/charts/validity-threats.svg)
 
 ## Safety notes
 

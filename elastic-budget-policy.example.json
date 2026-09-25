@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "default_profile": "standard",
   "evaluation_interval_seconds": 120,
     "lookback_hours": 6,
@@ -13,6 +13,40 @@
     "max_ratio": 0.94,
     "quantum_tokens": 1024,
     "minimum_reserve_tokens": 8192
+  },
+  "request_budgeting": {
+    "long_context_tokens": 65536,
+    "bands": [
+      {"name": "micro", "max_tokens": 1024},
+      {"name": "short", "max_tokens": 8192},
+      {"name": "medium", "max_tokens": 24576},
+      {"name": "long", "max_tokens": 65536},
+      {"name": "ultra", "max_tokens": 1000000000}
+    ],
+    "actions": {
+      "micro": {"profile": "economy", "max_output_tokens": 800, "context_mode": "stable-prefix", "compression_mode": "none"},
+      "short": {"profile": "balanced", "max_output_tokens": 1600, "context_mode": "stable-prefix", "compression_mode": "none"},
+      "medium": {"profile": "standard", "max_output_tokens": 3200, "context_mode": "selective", "compression_mode": "extractive"},
+      "long": {"profile": "extended", "max_output_tokens": 4800, "context_mode": "retrieve-and-rerank", "compression_mode": "semantic"},
+      "ultra": {"profile": "extended", "max_output_tokens": 6400, "context_mode": "hierarchical-memory", "compression_mode": "semantic"}
+    },
+    "candidate_profiles": {
+      "micro": ["economy", "balanced"],
+      "short": ["economy", "balanced", "standard"],
+      "medium": ["balanced", "standard", "extended"],
+      "long": ["standard", "extended"],
+      "ultra": ["extended"]
+    },
+    "learning": {
+      "minimum_trials": 2,
+      "ucb_exploration": 0.35,
+      "epsilon": 0.08,
+      "geometric_decay": 0.98,
+      "max_failure_rate": 0.10,
+      "cost_scale_tokens": 50000,
+      "latency_scale_seconds": 120,
+      "failure_penalty": 1.0
+    }
   },
   "learning": {
     "minimum_trials": 2,

@@ -35,6 +35,7 @@
 - `cost_proxy`：与控制器相同的加权 token 指标，不等于货币费用；
 - pairwise：同一 case/轮次下，质量更高者胜；质量相同时，成本代理值更低者胜；两者相同为平局；
 - 汇总包含均值、标准差、胜率和相对变化。
+- 超时或失败没有完整 usage 时，不能把 token/成本记成 0 并当作节省；资源均值只统计完成样本，同时报告完成数与超时数。
 
 真实货币费用只有在运行时显式提供每百万 token 单价后才计算。未配置单价时必须显示 `null`，不得根据未知的自定义 provider 猜测价格。
 
@@ -50,6 +51,9 @@
 
 ```bash
 python3 benchmarks/run_ab.py --rounds 3 --output benchmarks/results/latest
+python3 benchmarks/generate_charts.py benchmarks/results/latest
 ```
 
 脚本调用本机 `codex exec`，因此需要已经可用的 Codex CLI 登录和配置。建议先用 `--rounds 1` 验证环境。
+
+本轮结果的图表、有效性问题和改进方案见 [`PROBLEMS_AND_NEXT_STEPS.zh-CN.md`](PROBLEMS_AND_NEXT_STEPS.zh-CN.md)。

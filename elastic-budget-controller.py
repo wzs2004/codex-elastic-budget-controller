@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Adaptive Codex context/compaction budget controller.
+"""Adaptive per-request and long-context budget controller.
 
 Only standard-library modules are used so the LaunchAgent can run it with the
 macOS system Python. Decisions are discrete, rate-limited, logged, and atomic.
@@ -12,7 +12,10 @@ import math
 import os
 import re
 import statistics
+import subprocess
 import tempfile
+import time
+import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -147,6 +150,372 @@ def elastic_compact_token_limit(
     reserve = int(elastic.get("minimum_reserve_tokens", 16384))
     tokens = max(quantum, min(window - reserve, tokens))
     return tokens, round(tokens / window, 4)
+
+
+def clamp(value: float, minimum: float = 0.0, maximum: float = 1.0) -> float:
+    return max(minimum, min(maximum, value))
+
+
+def estimate_request_tokens(text: str) -> int:
+    """Return a conservative tokenizer-free estimate for preflight routing."""
+    if not text:
+        return 1
+    ascii_count = sum(1 for character in text if ord(character) < 128)
+    non_ascii_count = len(text) - ascii_count
+    return max(1, math.ceil(ascii_count / 4.0 + non_ascii_count / 1.5))
+
+
+def normalize_request(request: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize cheap, model-independent features available before a request."""
+    text = str(request.get("text") or request.get("prompt") or "")
+    estimated = int(request.get("estimated_input_tokens") or estimate_request_tokens(text))
+    task_type = str(request.get("task_type") or "general").lower()
+    complexity_defaults = {
+        "classification": 0.15, "extraction": 0.20, "rewrite": 0.20,
+        "general": 0.40, "analysis": 0.60, "coding": 0.70,
+        "research": 0.80, "high_stakes": 0.95,
+    }
+    complexity = clamp(float(request.get("complexity", complexity_defaults.get(task_type, 0.40))))
+    quality_risk = clamp(float(request.get("quality_risk", complexity)))
+    expected_tool_calls = max(0, int(request.get("expected_tool_calls") or 0))
+    expected_turns = max(1, int(request.get("expected_turns") or 1))
+    return {
+        "estimated_input_tokens": estimated,
+        "task_type": task_type,
+        "complexity": round(complexity, 4),
+        "quality_risk": round(quality_risk, 4),
+        "expected_tool_calls": expected_tool_calls,
+        "expected_turns": expected_turns,
+        "latency_sensitive": bool(request.get("latency_sensitive", False)),
+        "reusable_prefix": bool(request.get("reusable_prefix", expected_turns > 1)),
+    }
+
+
+def choose_request_profile(
+    tier: str, base_profile: str, request: Dict[str, Any], policy: Dict[str, Any],
+    learning: Optional[Dict[str, Any]] = None,
+) -> Tuple[str, str, float]:
+    """Choose a safe profile arm with deterministic conservative UCB."""
+    settings = policy.get("request_budgeting", {})
+    candidates = list((settings.get("candidate_profiles") or {}).get(tier) or [base_profile])
+    profiles = {item["name"]: item for item in policy["profiles"]}
+    candidates = [name for name in candidates if name in profiles]
+    if not candidates:
+        return base_profile, "configured base profile", 1.0
+    learner = settings.get("learning", {})
+    stats = (learning or {}).get("arms") or {}
+    minimum_trials = int(learner.get("minimum_trials", 2))
+    eligible = []
+    for name in candidates:
+        item = stats.get(f"{tier}:{name}") or {}
+        attempts = int(item.get("count") or 0)
+        failures = int(item.get("failures") or 0)
+        failure_rate = failures / attempts if attempts else 0.0
+        if attempts < minimum_trials or failure_rate <= float(learner.get("max_failure_rate", 0.10)):
+            eligible.append(name)
+    eligible = eligible or [base_profile]
+    under_tested = [
+        name for name in eligible
+        if int((stats.get(f"{tier}:{name}") or {}).get("count") or 0) < minimum_trials
+    ]
+    request_key = json.dumps(request, ensure_ascii=False, sort_keys=True)
+    seed = int(hashlib.sha256(request_key.encode()).hexdigest()[:8], 16)
+    if under_tested:
+        return (
+            under_tested[seed % len(under_tested)],
+            "safe minimum-trial exploration",
+            round(1.0 / len(under_tested), 6),
+        )
+    exploration = float(learner.get("ucb_exploration", 0.35))
+    features = request_feature_vector(normalize_request(request))
+
+    def value(name: str) -> float:
+        item = stats.get(f"{tier}:{name}") or {}
+        diagonal = list(item.get("a_diagonal") or [1.0] * len(features))
+        response = list(item.get("b_vector") or [0.0] * len(features))
+        if len(diagonal) != len(features) or len(response) != len(features):
+            diagonal, response = [1.0] * len(features), [0.0] * len(features)
+        mean = sum((response[index] / max(diagonal[index], 1e-9)) * value
+                   for index, value in enumerate(features))
+        uncertainty = math.sqrt(sum(
+            value * value / max(diagonal[index], 1e-9)
+            for index, value in enumerate(features)
+        ))
+        return mean + exploration * uncertainty
+
+    greedy = max(eligible, key=value)
+    epsilon = clamp(float(learner.get("epsilon", 0.08)), 0.0, 0.5)
+    unit = seed / float(0xFFFFFFFF)
+    if len(eligible) > 1 and unit < epsilon:
+        selected = eligible[seed % len(eligible)]
+        reason = "safe epsilon exploration around diagonal LinUCB"
+    else:
+        selected = greedy
+        reason = "safe diagonal LinUCB selection"
+    propensity = epsilon / len(eligible)
+    if selected == greedy:
+        propensity += 1.0 - epsilon
+    return selected, reason, round(propensity, 6)
+
+
+def request_feature_vector(features: Dict[str, Any]) -> List[float]:
+    """Dense, bounded features for online per-request learning."""
+    return [
+        1.0,
+        float(features["complexity"]),
+        float(features["quality_risk"]),
+        clamp(math.log1p(float(features["estimated_input_tokens"])) / math.log(131073)),
+        clamp(float(features["expected_tool_calls"]) / 12.0),
+        clamp((float(features["expected_turns"]) - 1.0) / 9.0),
+        float(bool(features["latency_sensitive"])),
+        float(bool(features["reusable_prefix"])),
+    ]
+
+
+def update_request_learning(
+    state: Dict[str, Any], feedback: Dict[str, Any], policy: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update a request-level arm from observed quality, cost, latency and status."""
+    tier = str(feedback.get("tier") or "")
+    profile = str(feedback.get("profile") or "")
+    if not tier or not profile:
+        raise ValueError("feedback requires tier and profile")
+    learner = policy.get("request_budgeting", {}).get("learning", {})
+    quality = clamp(float(feedback.get("quality_score", 0.0)))
+    success = bool(feedback.get("success", True))
+    cost = max(0.0, float(feedback.get("cost_tokens") or 0.0))
+    latency = max(0.0, float(feedback.get("latency_seconds") or 0.0))
+    reward = (
+        quality
+        - cost / max(1.0, float(learner.get("cost_scale_tokens", 50000)))
+        - latency / max(1.0, float(learner.get("latency_scale_seconds", 120)))
+        - (0.0 if success else float(learner.get("failure_penalty", 1.0)))
+    )
+    request_learning = dict(state.get("request_learning") or {})
+    arms = dict(request_learning.get("arms") or {})
+    decay = clamp(float(learner.get("geometric_decay", 0.98)), 0.5, 1.0)
+    raw_features = feedback.get("features") or {
+        "estimated_input_tokens": feedback.get("estimated_input_tokens", 1),
+        "task_type": feedback.get("task_type", "general"),
+        "complexity": feedback.get("complexity", 0.4),
+        "quality_risk": feedback.get("quality_risk", 0.4),
+        "expected_tool_calls": feedback.get("expected_tool_calls", 0),
+        "expected_turns": feedback.get("expected_turns", 1),
+        "latency_sensitive": feedback.get("latency_sensitive", False),
+        "reusable_prefix": feedback.get("reusable_prefix", False),
+    }
+    features = request_feature_vector(normalize_request(raw_features))
+    for arm_key, arm_value in list(arms.items()):
+        arm = dict(arm_value)
+        if "a_diagonal" in arm:
+            arm["a_diagonal"] = [1.0 + (float(value) - 1.0) * decay for value in arm["a_diagonal"]]
+            arm["b_vector"] = [float(value) * decay for value in arm.get("b_vector", [])]
+            arms[arm_key] = arm
+    key = f"{tier}:{profile}"
+    item = dict(arms.get(key) or {})
+    count = int(item.get("count") or 0) + 1
+    total_reward = float(item.get("total_reward") or 0.0) + reward
+    item.update({
+        "count": count,
+        "total_reward": round(total_reward, 6),
+        "mean_reward": round(total_reward / count, 6),
+        "failures": int(item.get("failures") or 0) + int(not success),
+        "quality_mean": round(
+            (float(item.get("quality_mean") or 0.0) * (count - 1) + quality) / count, 6
+        ),
+        "cost_tokens_total": round(float(item.get("cost_tokens_total") or 0.0) + cost, 2),
+        "latency_seconds_total": round(float(item.get("latency_seconds_total") or 0.0) + latency, 3),
+        "last_feedback_at": iso(utcnow()),
+    })
+    diagonal = list(item.get("a_diagonal") or [1.0] * len(features))
+    response = list(item.get("b_vector") or [0.0] * len(features))
+    item["a_diagonal"] = [round(diagonal[index] + value * value, 8)
+                          for index, value in enumerate(features)]
+    item["b_vector"] = [round(response[index] + reward * value, 8)
+                        for index, value in enumerate(features)]
+    arms[key] = item
+    request_learning.update({"arms": arms, "updated_at": iso(utcnow())})
+    updated = dict(state)
+    updated["request_learning"] = request_learning
+    return updated
+
+
+def quality_from_result(result: Dict[str, Any]) -> float:
+    """Read explicit evaluator output only; do not guess semantic quality."""
+    for key in ("quality_score", "score", "reward"):
+        if key in result:
+            return clamp(float(result[key]))
+    return 1.0 if result.get("success", True) else 0.0
+
+
+def execute_request(
+    request: Dict[str, Any], policy: Dict[str, Any], state: Dict[str, Any],
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Plan, execute a JSONL-capable command, and learn from every outcome."""
+    command = request.get("command")
+    if not isinstance(command, list) or not command or not all(isinstance(part, str) for part in command):
+        raise ValueError("request requires command as a non-empty string array")
+    plan = request_budget(request, policy, state.get("request_learning") or {})
+    request_id = str(request.get("request_id") or uuid.uuid4())
+    environment = dict(os.environ)
+    environment["ELASTIC_BUDGET_PLAN"] = json.dumps(
+        plan, ensure_ascii=False, separators=(",", ":")
+    )
+    environment["ELASTIC_REQUEST_ID"] = request_id
+    started = time.monotonic()
+    timed_out = False
+    try:
+        completed = subprocess.run(
+            command,
+            input=str(request.get("stdin") or ""),
+            text=True,
+            capture_output=True,
+            env=environment,
+            timeout=max(1.0, float(request.get("timeout_seconds") or 120)),
+            check=False,
+        )
+        return_code = completed.returncode
+        stdout = completed.stdout
+        stderr = completed.stderr
+    except subprocess.TimeoutExpired as error:
+        timed_out = True
+        return_code = 124
+        stdout = error.stdout if isinstance(error.stdout, str) else ""
+        stderr = error.stderr if isinstance(error.stderr, str) else ""
+    latency = time.monotonic() - started
+    parsed: Dict[str, Any] = {}
+    for line in reversed(stdout.splitlines()):
+        try:
+            candidate = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(candidate, dict):
+            parsed = candidate
+            break
+    success = return_code == 0 and not timed_out and bool(parsed.get("success", True))
+    usage = parsed.get("usage") or {}
+    cost_tokens = float(parsed.get("cost_tokens") or (
+        float(usage.get("input_tokens") or 0)
+        + float(usage.get("output_tokens") or 0)
+        + float(usage.get("reasoning_output_tokens") or 0)
+    ))
+    feedback = {
+        "tier": plan["tier"],
+        "profile": plan["budget_actions"]["profile"],
+        "features": plan["features"],
+        "quality_score": quality_from_result(parsed) if not timed_out else 0.0,
+        "cost_tokens": cost_tokens,
+        "latency_seconds": latency,
+        "success": success,
+    }
+    updated = update_request_learning(state, feedback, policy)
+    outcome = {
+        "request_id": request_id,
+        "plan": plan,
+        "feedback": feedback,
+        "return_code": return_code,
+        "timed_out": timed_out,
+        "stdout": stdout,
+        "stderr": stderr,
+        "parsed_result": parsed,
+    }
+    return outcome, updated
+
+
+def request_budget(
+    request: Dict[str, Any], policy: Dict[str, Any],
+    learning: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Produce a non-empty, multi-dimensional budget decision for every request."""
+    features = normalize_request(request)
+    settings = policy.get("request_budgeting", {})
+    bands = settings.get("bands") or [
+        {"name": "micro", "max_tokens": 1024},
+        {"name": "short", "max_tokens": 8192},
+        {"name": "medium", "max_tokens": 24576},
+        {"name": "long", "max_tokens": 65536},
+        {"name": "ultra", "max_tokens": 10 ** 9},
+    ]
+    estimated = features["estimated_input_tokens"]
+    token_pressure = clamp(estimated / max(1, int(settings.get("long_context_tokens", 65536))))
+    tool_pressure = clamp(features["expected_tool_calls"] / 12.0)
+    turn_pressure = clamp((features["expected_turns"] - 1) / 9.0)
+    score = (
+        0.35 * features["complexity"]
+        + 0.25 * features["quality_risk"]
+        + 0.20 * token_pressure
+        + 0.10 * tool_pressure
+        + 0.10 * turn_pressure
+    )
+    if features["latency_sensitive"]:
+        score -= 0.12
+    score = clamp(score)
+
+    token_band = next(
+        (index for index, band in enumerate(bands) if estimated <= int(band["max_tokens"])),
+        len(bands) - 1,
+    )
+    score_band = 0 if score < 0.28 else 1 if score < 0.46 else 2 if score < 0.66 else 3
+    tier_index = min(len(bands) - 1, max(token_band, score_band))
+    tier = str(bands[tier_index]["name"])
+
+    action_table = settings.get("actions") or {
+        "micro": {"profile": "economy", "max_output_tokens": 800,
+                  "context_mode": "stable-prefix", "compression_mode": "none"},
+        "short": {"profile": "balanced", "max_output_tokens": 1600,
+                  "context_mode": "stable-prefix", "compression_mode": "none"},
+        "medium": {"profile": "standard", "max_output_tokens": 3200,
+                   "context_mode": "selective", "compression_mode": "extractive"},
+        "long": {"profile": "extended", "max_output_tokens": 4800,
+                 "context_mode": "retrieve-and-rerank", "compression_mode": "semantic"},
+        "ultra": {"profile": "extended", "max_output_tokens": 6400,
+                  "context_mode": "hierarchical-memory", "compression_mode": "semantic"},
+    }
+    selected = dict(action_table.get(tier) or action_table["medium"])
+    profiles = {item["name"]: item for item in policy["profiles"]}
+    base_profile = selected.get("profile", policy["default_profile"])
+    profile_name, learning_reason, propensity = choose_request_profile(
+        tier, base_profile, request, policy, learning,
+    )
+    profile = profiles.get(profile_name, profiles[policy["default_profile"]])
+
+    minimum = float(profile.get("compact_min_ratio", 0.58))
+    maximum = float(profile.get("compact_max_ratio", 0.94))
+    compact_ratio = minimum + (maximum - minimum) * (0.25 + 0.75 * token_pressure)
+    compact_ratio = clamp(compact_ratio, minimum, maximum)
+    quantum = max(1, int(policy.get("elastic_compaction", {}).get("quantum_tokens", 1024)))
+    window = int(profile["context_window"])
+    reserve = int(policy.get("elastic_compaction", {}).get("minimum_reserve_tokens", 8192))
+    compact_limit = int(round(window * compact_ratio / quantum) * quantum)
+    compact_limit = max(quantum, min(window - reserve, compact_limit))
+
+    cache_mode = "stable-prefix-reuse" if features["reusable_prefix"] else "avoid-cache-write"
+    selected.update({
+        "profile": profile_name,
+        "reasoning_effort": profile["reasoning_effort"],
+        "verbosity": profile.get("verbosity", "low"),
+        "reasoning_summary": profile.get("reasoning_summary", "concise"),
+        "context_window": window,
+        "compact_token_limit": compact_limit,
+        "compact_ratio": round(compact_limit / window, 4),
+        "cache_mode": cache_mode,
+        "target_input_tokens": min(window - reserve, max(estimated, int(estimated * 1.2))),
+    })
+    return {
+        "policy_version": policy.get("version", 1),
+        "decision_scope": "every_request",
+        "tier": tier,
+        "score": round(score, 4),
+        "features": features,
+        "budget_actions": selected,
+        "learning_decision": learning_reason,
+        "action_propensity": propensity,
+        "provider_integration_hints": {
+            "model_routing": "use upstream router if available; not changed by this controller",
+            "speculative_decoding": "provider/runtime capability; not changed by this controller",
+            "kv_cache_quantization": "self-hosted runtime capability; not changed by this controller",
+        },
+    }
 
 
 def item_failed(item: Dict[str, Any]) -> bool:
@@ -733,11 +1102,66 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--policy", default=str(POLICY))
     result.add_argument("--state", default=str(STATE))
     result.add_argument("--sessions-dir", default=str(SESSIONS))
+    result.add_argument(
+        "--plan-request", metavar="TEXT",
+        help="emit an every-request preflight budget plan without changing config",
+    )
+    result.add_argument(
+        "--request-json", metavar="JSON",
+        help="request descriptor with text/tokens/complexity/tools/turns fields",
+    )
+    result.add_argument(
+        "--record-feedback", metavar="JSON",
+        help="update request learner with tier/profile/quality/cost/latency feedback",
+    )
+    result.add_argument(
+        "--execute-request", metavar="JSON",
+        help="plan, run command, parse its final JSON line, and automatically learn",
+    )
     return result
 
 
 def main() -> None:
     args = parser().parse_args()
+    if args.execute_request is not None:
+        policy = read_json(Path(args.policy), None)
+        if not policy:
+            raise SystemExit(f"invalid policy: {args.policy}")
+        try:
+            request = json.loads(args.execute_request)
+            outcome, state = execute_request(request, policy, read_json(Path(args.state), {}))
+        except (ValueError, TypeError) as error:
+            raise SystemExit(f"invalid execute request JSON: {error}")
+        atomic_write(Path(args.state), json.dumps(state, ensure_ascii=False, indent=2) + "\n", 0o600)
+        feedback_log = Path(args.state).with_suffix(".requests.jsonl")
+        feedback_log.parent.mkdir(parents=True, exist_ok=True)
+        with feedback_log.open("a") as handle:
+            handle.write(json.dumps(outcome, ensure_ascii=False, sort_keys=True) + "\n")
+        print(json.dumps(outcome, ensure_ascii=False, indent=2))
+        return
+    if args.record_feedback is not None:
+        policy = read_json(Path(args.policy), None)
+        if not policy:
+            raise SystemExit(f"invalid policy: {args.policy}")
+        try:
+            feedback = json.loads(args.record_feedback)
+            state = update_request_learning(read_json(Path(args.state), {}), feedback, policy)
+        except (ValueError, TypeError) as error:
+            raise SystemExit(f"invalid feedback JSON: {error}")
+        atomic_write(Path(args.state), json.dumps(state, ensure_ascii=False, indent=2) + "\n", 0o600)
+        print(json.dumps({"updated": True, "request_learning": state["request_learning"]}, ensure_ascii=False, indent=2))
+        return
+    if args.plan_request is not None or args.request_json is not None:
+        policy = read_json(Path(args.policy), None)
+        if not policy:
+            raise SystemExit(f"invalid policy: {args.policy}")
+        try:
+            request = json.loads(args.request_json) if args.request_json else {"text": args.plan_request}
+        except ValueError as error:
+            raise SystemExit(f"invalid request JSON: {error}")
+        learning = (read_json(Path(args.state), {}).get("request_learning") or {})
+        print(json.dumps(request_budget(request, policy, learning), ensure_ascii=False, indent=2))
+        return
     result = run(args)
     if args.dry_run or args.verbose:
         print(json.dumps(result, ensure_ascii=False, indent=2))
