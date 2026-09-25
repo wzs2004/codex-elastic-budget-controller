@@ -2,7 +2,45 @@
 
 [简体中文](README.zh-CN.md)
 
-An experimental, standard-library-only controller that makes a multi-dimensional budget decision for every request and learns online from quality, token, latency, and failure feedback. It no longer waits for a 48K context threshold before becoming adaptive.
+An experimental local helper that gives short tasks a smaller budget and long, tool-heavy conversations more context. It periodically adjusts Codex's context window and compaction point, while an optional request wrapper supports immediate feedback learning.
+
+> This is an independent experiment, not an official OpenAI feature.
+
+## Quick install on a new computer
+
+Requires Python 3 and Git on macOS or a systemd-based Linux distribution.
+
+```bash
+git clone https://github.com/wzs2004/codex-elastic-budget-controller.git
+cd codex-elastic-budget-controller
+./scripts/install.sh --fresh-state
+```
+
+The installer backs up existing files, installs a 120-second background schedule, and runs the controller once. Start a **new Codex conversation** afterward so it uses the newly selected context window.
+
+Update without deleting learned state:
+
+```bash
+git pull
+./scripts/install.sh
+```
+
+Check status or uninstall:
+
+```bash
+./scripts/status.sh
+./scripts/uninstall.sh
+```
+
+## What works automatically
+
+| Capability | After installation |
+|---|---|
+| Adjust Codex context window and compaction point | Automatic |
+| Periodically select a capacity profile from local session signals | Automatic |
+| Per-request filtering and immediate feedback learning | Requires `--execute-request` integration |
+
+The external controller cannot silently intercept every request made by the standard Codex client. The advanced request planner becomes effective only when an upstream worker applies its plan.
 
 ## What it adjusts
 
@@ -32,17 +70,6 @@ The controller combines:
 - UCB exploration/exploitation using normalized cost, latency, failures, forgetting signals, completion, and compaction feedback.
 
 Concurrent sessions are handled conservatively: a recent preferred session is not displaced merely because another JSONL file has a newer modification time. Learning occurs only after a completed session becomes stale.
-
-## Install
-
-```bash
-mkdir -p ~/.codex
-cp elastic-budget-controller.py ~/.codex/
-cp elastic-budget-policy.example.json ~/.codex/elastic-budget-policy.json
-python3 ~/.codex/elastic-budget-controller.py --dry-run --force --verbose
-```
-
-Review the dry-run output before enabling scheduled execution. The script defaults to `$CODEX_HOME` when set, otherwise `~/.codex`.
 
 ## Run
 
