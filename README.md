@@ -105,6 +105,7 @@ See [`benchmarks/README.zh-CN.md`](benchmarks/README.zh-CN.md) for the reproduci
 - [Online-learning simulation](benchmarks/results/2026-09-25/online-learning-simulation.svg) (mechanism validation only, not real-model savings)
 - [v1.3 mechanism benchmark](benchmarks/results/2026-09-25/v1.3-mechanism-benchmark.svg): 1,000 deterministic trials, 34.62% fewer selected input tokens and 100% evidence retention; not real-model evidence
 - [v1.4 research and results (Chinese)](benchmarks/V1.4_RESEARCH_AND_RESULTS.zh-CN.md) · [2,000-request mechanism simulation](benchmarks/results/2026-09-26-v1.4/v14-policy-simulation.svg) · [real Codex A/B](benchmarks/results/2026-09-26-v1.4/real-ab/REPORT.zh-CN.md)
+- [v2 verifier-gated model cascade: research, algorithm, and limits (Chinese)](benchmarks/V2_VERIFIED_PROGRESSIVE_INFERENCE.zh-CN.md) · [real A/B against an uncontrolled fixed-standard baseline](benchmarks/results/2026-09-26-v2/model-cascade-ab/REPORT.zh-CN.md)
 - [By-case chart](benchmarks/results/2026-09-25/charts/by-case.svg) · [Paired deltas](benchmarks/results/2026-09-25/charts/paired-deltas.svg) · [Validity threats](benchmarks/results/2026-09-25/charts/validity-threats.svg)
 
 ## Safety notes

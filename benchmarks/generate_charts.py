@@ -186,6 +186,40 @@ def threats_chart(rows, output):
     output.write_text("\n".join(parts) + "\n")
 
 
+def model_cascade(rows, output):
+    baseline = [stage for row in rows if row["treatment"] == "baseline" for stage in row.get("stage_metrics", [])]
+    adaptive = [stage for row in rows if row["treatment"] == "adaptive" for stage in row.get("stage_metrics", [])]
+    base_standard = sum(stage["total_tokens"] for stage in baseline)
+    adaptive_standard = sum(stage["total_tokens"] for stage in adaptive if stage["model_role"] == "configured-default")
+    adaptive_economy = sum(stage["total_tokens"] for stage in adaptive if stage["model_role"] != "configured-default")
+    base_calls = len(baseline)
+    standard_calls = sum(stage["model_role"] == "configured-default" for stage in adaptive)
+    economy_calls = len(adaptive) - standard_calls
+    ratio = (base_standard - adaptive_standard) / adaptive_economy if adaptive_economy else 0
+    parts = svg_start(1120, 480, "Verifier-gated model cascade / 验证式模型级联", "Equal contract quality; monetary savings depend on relative model prices")
+    parts.append(text(55, 120, "Model calls / 模型调用", 16, TEXT, weight=700))
+    max_calls = max(base_calls, standard_calls + economy_calls, 1)
+    for index, (label, standard, economy) in enumerate((("baseline", base_calls, 0), ("v2 adaptive", standard_calls, economy_calls))):
+        y = 155 + index * 62
+        scale = 470 / max_calls
+        parts.append(text(55, y + 20, label, 13, TEXT))
+        parts.append(f'<rect x="180" y="{y}" width="{standard * scale:.1f}" height="28" rx="5" fill="#64748b"/>')
+        parts.append(f'<rect x="{180 + standard * scale:.1f}" y="{y}" width="{economy * scale:.1f}" height="28" rx="5" fill="#2563eb"/>')
+        parts.append(text(670, y + 20, f"standard {standard}, economy {economy}", 12, MUTED))
+    parts.append(text(55, 315, "Stage token composition / 分阶段 token", 16, TEXT, weight=700))
+    maximum = max(base_standard, adaptive_standard + adaptive_economy, 1)
+    for index, (label, standard, economy) in enumerate((("baseline", base_standard, 0), ("v2 adaptive", adaptive_standard, adaptive_economy))):
+        y = 345 + index * 48
+        scale = 600 / maximum
+        parts.append(text(55, y + 17, label, 13, TEXT))
+        parts.append(f'<rect x="180" y="{y}" width="{standard * scale:.1f}" height="24" rx="4" fill="#64748b"/>')
+        parts.append(f'<rect x="{180 + standard * scale:.1f}" y="{y}" width="{economy * scale:.1f}" height="24" rx="4" fill="#2563eb"/>')
+        parts.append(text(800, y + 17, f"standard {standard:,}; economy {economy:,}", 12, MUTED))
+    parts.append(text(55, 455, f"Break-even economy/standard unit-token price ratio: {ratio:.2%} (simplified sensitivity, not an invoice)", 12, MUTED))
+    parts.append("</svg>")
+    output.write_text("\n".join(parts) + "\n")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("results", nargs="?", default="benchmarks/results/2026-09-25")
@@ -198,7 +232,8 @@ def main():
     case_comparison(rows, chart_dir / "by-case.svg")
     paired_deltas(rows, chart_dir / "paired-deltas.svg")
     threats_chart(rows, chart_dir / "validity-threats.svg")
-    print(f"wrote 4 charts to {chart_dir}")
+    model_cascade(rows, chart_dir / "model-cascade.svg")
+    print(f"wrote 5 charts to {chart_dir}")
 
 
 if __name__ == "__main__":

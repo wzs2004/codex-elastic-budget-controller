@@ -1,0 +1,149 @@
+{
+  "groups": {
+    "baseline": {
+      "trials": 5,
+      "quality": {
+        "mean": 1.0,
+        "sd": 0.0
+      },
+      "latency_seconds": {
+        "mean": 47.521,
+        "sd": 50.1437,
+        "n": 5
+      },
+      "total_tokens": {
+        "mean": 14795,
+        "sd": 1728.4523,
+        "n": 5
+      },
+      "cost_proxy": {
+        "mean": 10881.4,
+        "sd": 5667.6879,
+        "n": 5
+      },
+      "success_rate": 1.0,
+      "timeouts": 0
+    },
+    "adaptive": {
+      "trials": 5,
+      "quality": {
+        "mean": 1.0,
+        "sd": 0.0
+      },
+      "latency_seconds": {
+        "mean": 38.4494,
+        "sd": 21.7867,
+        "n": 5
+      },
+      "total_tokens": {
+        "mean": 15491.2,
+        "sd": 1147.208,
+        "n": 5
+      },
+      "cost_proxy": {
+        "mean": 16295.8,
+        "sd": 947.2891,
+        "n": 5
+      },
+      "success_rate": 1.0,
+      "timeouts": 0
+    }
+  },
+  "by_case": {
+    "arithmetic": {
+      "baseline": {
+        "quality_mean": 1.0,
+        "total_tokens_mean": 15932,
+        "cost_proxy_mean": 16367.0,
+        "latency_seconds_mean": 24.503,
+        "completed": 1,
+        "timeouts": 0
+      },
+      "adaptive": {
+        "quality_mean": 1.0,
+        "total_tokens_mean": 15919,
+        "cost_proxy_mean": 16237.0,
+        "latency_seconds_mean": 37.458,
+        "completed": 1,
+        "timeouts": 0
+      }
+    },
+    "code_review": {
+      "baseline": {
+        "quality_mean": 1.0,
+        "total_tokens_mean": 16085,
+        "cost_proxy_mean": 4525.0,
+        "latency_seconds_mean": 23.1,
+        "completed": 1,
+        "timeouts": 0
+      },
+      "adaptive": {
+        "quality_mean": 1.0,
+        "total_tokens_mean": 16039,
+        "cost_proxy_mean": 16621.0,
+        "latency_seconds_mean": 27.401,
+        "completed": 1,
+        "timeouts": 0
+      }
+    },
+    "constraint_reasoning": {
+      "baseline": {
+        "quality_mean": 1.0,
+        "total_tokens_mean": 16071,
+        "cost_proxy_mean": 4994.0,
+        "latency_seconds_mean": 49.49,
+        "completed": 1,
+        "timeouts": 0
+      },
+      "adaptive": {
+        "quality_mean": 1.0,
+        "total_tokens_mean": 16012,
+        "cost_proxy_mean": 16960.0,
+        "latency_seconds_mean": 64.305,
+        "completed": 1,
+        "timeouts": 0
+      }
+    },
+    "dependency_analysis": {
+      "baseline": {
+        "quality_mean": 1.0,
+        "total_tokens_mean": 12439,
+        "cost_proxy_mean": 13762.0,
+        "latency_seconds_mean": 133.08,
+        "completed": 1,
+        "timeouts": 0
+      },
+      "adaptive": {
+        "quality_mean": 1.0,
+        "total_tokens_mean": 16045,
+        "cost_proxy_mean": 16972.0,
+        "latency_seconds_mean": 54.032,
+        "completed": 1,
+        "timeouts": 0
+      }
+    },
+    "structured_analysis": {
+      "baseline": {
+        "quality_mean": 1.0,
+        "total_tokens_mean": 13448,
+        "cost_proxy_mean": 14759.0,
+        "latency_seconds_mean": 7.432,
+        "completed": 1,
+        "timeouts": 0
+      },
+      "adaptive": {
+        "quality_mean": 1.0,
+        "total_tokens_mean": 13441,
+        "cost_proxy_mean": 14689.0,
+        "latency_seconds_mean": 9.051,
+        "completed": 1,
+        "timeouts": 0
+      }
+    }
+  },
+  "pairwise": {
+    "baseline_wins": 3,
+    "adaptive_wins": 2,
+    "ties": 0
+  }
+}

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="480" viewBox="0 0 1120 480" role="img" aria-labelledby="title desc">
+<title id="title">Verifier-gated model cascade / 验证式模型级联</title>
+<desc id="desc">Equal contract quality; monetary savings depend on relative model prices</desc>
+<rect width="1120" height="480" fill="#ffffff" rx="16"/>
+<text x="40" y="46" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="24" font-weight="700" fill="#0f172a">Verifier-gated model cascade / 验证式模型级联</text>
+<text x="40" y="72" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" fill="#64748b">Equal contract quality; monetary savings depend on relative model prices</text>
+<text x="55" y="120" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#0f172a" text-anchor="start">Model calls / 模型调用</text>
+<text x="55" y="175" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="400" fill="#0f172a" text-anchor="start">baseline</text>
+<rect x="180" y="155" width="391.7" height="28" rx="5" fill="#64748b"/>
+<rect x="571.7" y="155" width="0.0" height="28" rx="5" fill="#2563eb"/>
+<text x="670" y="175" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">standard 5, economy 0</text>
+<text x="55" y="237" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="400" fill="#0f172a" text-anchor="start">v2 adaptive</text>
+<rect x="180" y="217" width="78.3" height="28" rx="5" fill="#64748b"/>
+<rect x="258.3" y="217" width="391.7" height="28" rx="5" fill="#2563eb"/>
+<text x="670" y="237" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">standard 1, economy 5</text>
+<text x="55" y="315" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#0f172a" text-anchor="start">Stage token composition / 分阶段 token</text>
+<text x="55" y="362" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="400" fill="#0f172a" text-anchor="start">baseline</text>
+<rect x="180" y="345" width="480.3" height="24" rx="4" fill="#64748b"/>
+<rect x="660.3" y="345" width="0.0" height="24" rx="4" fill="#2563eb"/>
+<text x="800" y="362" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">standard 74,804; economy 0</text>
+<text x="55" y="410" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="13" font-weight="400" fill="#0f172a" text-anchor="start">v2 adaptive</text>
+<rect x="180" y="393" width="103.2" height="24" rx="4" fill="#64748b"/>
+<rect x="283.2" y="393" width="496.8" height="24" rx="4" fill="#2563eb"/>
+<text x="800" y="410" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">standard 16,066; economy 77,375</text>
+<text x="55" y="455" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="12" font-weight="400" fill="#64748b" text-anchor="start">Break-even economy/standard unit-token price ratio: 75.91% (simplified sensitivity, not an invoice)</text>
+</svg>

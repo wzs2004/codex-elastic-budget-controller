@@ -170,6 +170,51 @@ class ElasticBudgetTests(unittest.TestCase):
         outcome, _ = MODULE.execute_request(request, POLICY, {})
         self.assertFalse(outcome["cascade_triggered"])
 
+    def test_quality_contract_accepts_exact_subset(self):
+        result = {"answer": {"value": 7, "extra": "allowed"}}
+        checked = MODULE.verify_quality_contract(
+            result, {"type": "json_subset", "expected": {"value": 7}})
+        self.assertTrue(checked["passed"])
+
+    def test_quality_contract_rejects_wrong_nested_value(self):
+        result = {"answer": {"route": ["A", "C"]}}
+        checked = MODULE.verify_quality_contract(
+            result, {"type": "json_subset", "expected": {"route": ["A", "B"]}})
+        self.assertFalse(checked["passed"])
+        self.assertIn("answer.route[1]", checked["violations"][0])
+
+    def test_verified_progressive_inference_stops_after_contract_pass(self):
+        request = {
+            "estimated_input_tokens": 100,
+            "quality_contract": {"type": "json_subset", "expected": {"value": 7}},
+            "command": ["python3", "-c", (
+                "import json; print(json.dumps({'success': True, 'answer': {'value': 7}, "
+                "'usage': {'input_tokens': 10, 'output_tokens': 5}}))"
+            )],
+        }
+        outcome, state = MODULE.execute_request(request, POLICY, {})
+        self.assertTrue(outcome["contract_passed"])
+        self.assertEqual(len(outcome["attempts"]), 1)
+        self.assertEqual(outcome["plan"]["strategy"], "verified-progressive-inference")
+        self.assertEqual(outcome["plan"]["budget_actions"]["model"], "gpt-6-sol")
+        self.assertEqual(state, {})
+
+    def test_verified_progressive_inference_escalates_on_contract_failure(self):
+        request = {
+            "estimated_input_tokens": 100,
+            "quality_contract": {"type": "json_subset", "expected": {"value": 7}},
+            "command": ["python3", "-c", (
+                "import json, os; p=json.loads(os.environ['ELASTIC_BUDGET_PLAN']); "
+                "v=7 if p['budget_actions']['profile']=='standard' else 6; "
+                "print(json.dumps({'success': True, 'answer': {'value': v}}))"
+            )],
+        }
+        outcome, _ = MODULE.execute_request(request, POLICY, {})
+        self.assertTrue(outcome["contract_passed"])
+        self.assertEqual(len(outcome["attempts"]), 2)
+        self.assertEqual(outcome["attempts"][1]["plan"]["budget_actions"]["profile"], "standard")
+        self.assertNotIn("model", outcome["attempts"][1]["plan"]["budget_actions"])
+
     def test_drift_detector_shrinks_stale_learning(self):
         policy = json.loads(json.dumps(POLICY))
         policy["request_budgeting"]["learning"]["drift_detection"].update({

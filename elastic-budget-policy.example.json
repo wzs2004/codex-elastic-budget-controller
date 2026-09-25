@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "default_profile": "standard",
   "evaluation_interval_seconds": 120,
     "lookback_hours": 6,
@@ -17,6 +17,15 @@
   "context_selection": {
     "preserve_boundaries": true,
     "method": "deterministic-query-aware-extractive"
+  },
+  "quality_contracts": {
+    "enabled": true,
+    "strategy": "verified-progressive-inference",
+    "stages": [
+      {"profile": "economy", "model": "gpt-6-sol"},
+      {"profile": "standard"}
+    ],
+    "max_attempts": 2
   },
   "request_budgeting": {
     "long_context_tokens": 65536,

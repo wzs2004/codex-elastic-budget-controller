@@ -562,6 +562,85 @@ def quality_from_result(result: Dict[str, Any]) -> float:
     return 1.0 if result.get("success", True) else 0.0
 
 
+def _contract_subset(actual: Any, expected: Any, path: str = "answer") -> List[str]:
+    """Return deterministic contract violations; expected mappings are subsets."""
+    if isinstance(expected, dict):
+        if not isinstance(actual, dict):
+            return [f"{path}: expected object"]
+        violations: List[str] = []
+        for key, value in expected.items():
+            child = f"{path}.{key}"
+            if key not in actual:
+                violations.append(f"{child}: missing")
+            else:
+                violations.extend(_contract_subset(actual[key], value, child))
+        return violations
+    if isinstance(expected, list):
+        if not isinstance(actual, list):
+            return [f"{path}: expected array"]
+        if len(actual) != len(expected):
+            return [f"{path}: expected {len(expected)} items, got {len(actual)}"]
+        violations: List[str] = []
+        for index, value in enumerate(expected):
+            violations.extend(_contract_subset(actual[index], value, f"{path}[{index}]"))
+        return violations
+    return [] if actual == expected else [f"{path}: expected {expected!r}, got {actual!r}"]
+
+
+def verify_quality_contract(result: Dict[str, Any], contract: Dict[str, Any]) -> Dict[str, Any]:
+    """Verify an answer without trusting model confidence or self-evaluation."""
+    if not isinstance(contract, dict):
+        return {"passed": False, "violations": ["quality_contract must be an object"]}
+    kind = str(contract.get("type") or "json_subset")
+    if kind != "json_subset":
+        return {"passed": False, "violations": [f"unsupported contract type: {kind}"]}
+    actual = result.get("answer") if isinstance(result, dict) else None
+    violations = _contract_subset(actual, contract.get("expected"), "answer")
+    return {"passed": not violations, "violations": violations, "type": kind}
+
+
+def quality_contract_plan(request: Dict[str, Any], policy: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Build a verifier-gated progressive-compute plan, independent of bandit state."""
+    contract = request.get("quality_contract")
+    settings = policy.get("quality_contracts", {})
+    if not settings.get("enabled", False) or not isinstance(contract, dict):
+        return None
+    profiles = {item["name"]: item for item in policy["profiles"]}
+    configured_stages = settings.get("stages", ["economy", "standard"])
+    normalized_stages = []
+    for item in configured_stages:
+        stage = {"profile": item} if isinstance(item, str) else dict(item)
+        if stage.get("profile") in profiles:
+            normalized_stages.append(stage)
+    if not normalized_stages:
+        normalized_stages = [{"profile": policy["default_profile"]}]
+    maximum = max(1, int(settings.get("max_attempts", len(normalized_stages))))
+    stages = []
+    for index, configured in enumerate(normalized_stages[:maximum]):
+        name = configured["profile"]
+        profile = profiles[name]
+        stage = {
+            "stage": index + 1,
+            "profile": name,
+            "reasoning_effort": profile["reasoning_effort"],
+            "verbosity": profile.get("verbosity", "low"),
+            "reasoning_summary": profile.get("reasoning_summary", "none"),
+            "context_window": profile["context_window"],
+            "compact_token_limit": profile["compact_token_limit"],
+        }
+        if configured.get("model"):
+            stage["model"] = str(configured["model"])
+        stages.append(stage)
+    return {
+        "strategy": "verified-progressive-inference",
+        "acceptance_source": "external-deterministic-contract",
+        "contract": contract,
+        "stages": stages,
+        "stop_on_pass": True,
+        "guarantee_scope": "quality is preserved only to the extent the supplied contract is sound",
+    }
+
+
 def execute_request(
     request: Dict[str, Any], policy: Dict[str, Any], state: Dict[str, Any],
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
@@ -570,6 +649,7 @@ def execute_request(
     if not isinstance(command, list) or not command or not all(isinstance(part, str) for part in command):
         raise ValueError("request requires command as a non-empty string array")
     plan = request_budget(request, policy, state.get("request_learning") or {})
+    contract_plan = quality_contract_plan(request, policy)
     request_id = str(request.get("request_id") or uuid.uuid4())
     def run_attempt(attempt_plan: Dict[str, Any]) -> Dict[str, Any]:
         environment = dict(os.environ)
@@ -610,6 +690,27 @@ def execute_request(
         return {"plan": attempt_plan, "feedback": feedback, "return_code": return_code,
                 "timed_out": timed_out, "stdout": stdout, "stderr": stderr,
                 "parsed_result": parsed}
+
+    if contract_plan:
+        attempts = []
+        for stage in contract_plan["stages"]:
+            attempt_plan = json.loads(json.dumps(plan))
+            attempt_plan["strategy"] = contract_plan["strategy"]
+            attempt_plan["budget_actions"].update(stage)
+            attempt = run_attempt(attempt_plan)
+            attempt["contract_verification"] = verify_quality_contract(
+                attempt["parsed_result"], contract_plan["contract"])
+            attempts.append(attempt)
+            if attempt["feedback"]["success"] and attempt["contract_verification"]["passed"]:
+                break
+        final_attempt = attempts[-1]
+        outcome = {
+            "request_id": request_id, **final_attempt, "attempts": attempts,
+            "cascade_triggered": len(attempts) > 1,
+            "quality_contract": contract_plan,
+            "contract_passed": bool(final_attempt["contract_verification"]["passed"]),
+        }
+        return outcome, state
 
     attempts = [run_attempt(plan)]
     first = attempts[0]

@@ -178,6 +178,7 @@ python3 benchmarks/run_ab.py --help
 - [在线学习模拟结果](benchmarks/results/2026-09-25/online-learning-simulation.svg)（只验证学习机制，不代表真实模型节省）
 - [v1.3 机制测试](benchmarks/results/2026-09-25/v1.3-mechanism-benchmark.svg)：1,000 次确定性受控试验，输入片段减少 34.62%，证据保留率 100%。这只证明筛选逻辑按设计工作，不等于真实模型费用降低 34.62%，也不证明回答质量必然提高；
 - [v1.4 研究与结果](benchmarks/V1.4_RESEARCH_AND_RESULTS.zh-CN.md) · [2,000 请求机制模拟](benchmarks/results/2026-09-26-v1.4/v14-policy-simulation.svg) · [真实 Codex A/B](benchmarks/results/2026-09-26-v1.4/real-ab/REPORT.zh-CN.md)；
+- [v2 验证式模型级联：研究、算法与边界](benchmarks/V2_VERIFIED_PROGRESSIVE_INFERENCE.zh-CN.md) · [无控制 baseline 对比真实 Codex A/B](benchmarks/results/2026-09-26-v2/model-cascade-ab/REPORT.zh-CN.md)；
 - [按任务图表](benchmarks/results/2026-09-25/charts/by-case.svg) · [配对差值图](benchmarks/results/2026-09-25/charts/paired-deltas.svg) · [有效性问题图](benchmarks/results/2026-09-25/charts/validity-threats.svg)
 
 ## 安全提示

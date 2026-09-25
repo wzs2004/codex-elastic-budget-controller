@@ -1,0 +1,9 @@
+{
+  "created_at": "2026-09-25T17:03:08.520627+00:00",
+  "codex_version": "codex-cli 0.155.0-alpha.16.4",
+  "rounds": 1,
+  "cases": 5,
+  "prices_supplied": false,
+  "economy_model": "gpt-6-sol",
+  "method": "paired alternating-order A/B; baseline configured-default standard model; adaptive explicit economy model first with deterministic quality-contract escalation to configured-default; same prompt/schema/tools"
+}

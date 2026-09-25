@@ -1,6 +1,6 @@
 # A/B 评测方法
 
-本评测用于比较固定配置（baseline）与弹性策略（adaptive），不是比较不同模型。
+最新版评测比较完全不做成本控制的固定标准模型 baseline，与 v2 验证式渐进推理：廉价模型先行，外部契约失败才升级标准模型。
 
 ## 方法来源
 
@@ -19,11 +19,11 @@
 
 ## 控制变量
 
-- 同一模型和 provider；
+- 同一 provider；baseline 使用本机标准模型，v2 首阶段显式使用廉价模型，升级阶段回到同一标准模型；
 - 同一提示词、输入文件、沙箱、工具权限和输出 JSON Schema；
 - 每个 case 在 baseline/adaptive 下各运行相同轮数；
 - baseline 固定为 standard 参数；
-- adaptive 在每次调用前把数据集中的可观测请求特征交给控制器实时选择 profile，不能根据答案事后选择；
+- v2 不做事前难度预测；只有模型返回后，隐藏参考答案驱动的确定性契约才能决定是否升级；
 - 两组交替执行，降低时间顺序偏差；
 - grader 只检查结构化参考答案，不使用主观人工挑选。
 
@@ -45,12 +45,13 @@
 - 上下文阈值对未接近阈值的短任务影响有限；
 - 模型输出存在随机性，因此保留逐轮结果并报告标准差；
 - 自定义 provider 的缓存和计费规则可能与公开 API 不同；
-- 本次 isolated A/B 没有生产反馈历史，adaptive 反映冷启动路由；生产环境还会使用历史学习统计。
+- benchmark 的 oracle 契约强于一般生产 verifier；结果只适用于可自动验证任务。
 
 ## 复现
 
 ```bash
-python3 benchmarks/run_ab.py --rounds 3 --output benchmarks/results/latest
+python3 benchmarks/run_ab.py --rounds 3 --economy-model gpt-6-sol \
+  --output benchmarks/results/latest
 python3 benchmarks/generate_charts.py benchmarks/results/latest
 ```
 
