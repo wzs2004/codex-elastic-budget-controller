@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "default_profile": "standard",
+  "evaluation_interval_seconds": 120,
+    "lookback_hours": 6,
+    "session_stale_minutes": 15,
+  "compaction_window_minutes": 90,
+  "repeat_compaction_count": 2,
+  "repeat_compaction_guard_minutes": 15,
+  "elastic_compaction": {
+    "min_ratio": 0.58,
+    "base_ratio": 0.74,
+    "max_ratio": 0.94,
+    "quantum_tokens": 1024,
+    "minimum_reserve_tokens": 8192
+  },
+  "learning": {
+    "minimum_trials": 2,
+    "ucb_exploration": 0.7,
+    "cost_scale_tokens": 100000,
+    "latency_scale_seconds": 120,
+    "cost_weights": {
+      "uncached_input": 1.0,
+      "cached_input": 0.2,
+      "output": 4.0,
+      "reasoning": 6.0
+    },
+    "penalties": {
+      "compaction": 0.8,
+      "failure": 1.5,
+      "forgetting": 2.5,
+      "no_completion": 1.0
+    }
+  },
+  "session_window_ratio_min": 0.75,
+  "session_window_ratio_max": 1.25,
+  "upgrade_cooldown_minutes": 15,
+  "downgrade_cooldown_minutes": 60,
+  "profiles": [
+    {
+      "name": "economy",
+      "context_window": 49152,
+      "compact_token_limit": 43008,
+      "reasoning_effort": "low"
+      ,"verbosity": "low", "reasoning_summary": "none",
+      "compact_min_ratio": 0.55, "compact_base_ratio": 0.64,
+      "compact_max_ratio": 0.78, "capacity_level": 0
+    },
+    {
+      "name": "balanced",
+      "context_window": 65536,
+      "compact_token_limit": 57344,
+      "reasoning_effort": "medium"
+      ,"verbosity": "low", "reasoning_summary": "concise",
+      "compact_min_ratio": 0.58, "compact_base_ratio": 0.70,
+      "compact_max_ratio": 0.84, "capacity_level": 0
+    },
+    {
+      "name": "standard",
+      "context_window": 98304,
+      "compact_token_limit": 86016,
+      "reasoning_effort": "medium"
+      ,"verbosity": "medium", "reasoning_summary": "concise",
+      "compact_min_ratio": 0.62, "compact_base_ratio": 0.78,
+      "compact_max_ratio": 0.90, "capacity_level": 1
+    },
+    {
+      "name": "extended",
+      "context_window": 131072,
+      "compact_token_limit": 114688,
+      "reasoning_effort": "high"
+      ,"verbosity": "low", "reasoning_summary": "auto",
+      "compact_min_ratio": 0.68, "compact_base_ratio": 0.84,
+      "compact_max_ratio": 0.94, "capacity_level": 2
+    }
+  ],
+  "signals": {
+    "occupancy_high": 0.72,
+    "occupancy_critical": 0.86,
+    "occupancy_low": 0.30,
+    "growth_high_tokens_per_minute": 2500,
+    "frequent_compactions": 2,
+    "rapid_compaction_minutes": 15,
+    "tool_calls_high": 12,
+    "turns_high": 10,
+    "cache_hit_good": 0.50,
+    "upgrade_score": 3,
+    "downgrade_score": -2
+  }
+}

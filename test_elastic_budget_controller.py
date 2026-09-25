@@ -1,0 +1,389 @@
+#!/usr/bin/python3
+import importlib.util
+import json
+import tempfile
+import unittest
+from argparse import Namespace
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+MODULE_PATH = Path(__file__).with_name("elastic-budget-controller.py")
+SPEC = importlib.util.spec_from_file_location("elastic_budget", MODULE_PATH)
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+POLICY = json.loads(Path(__file__).with_name("elastic-budget-policy.example.json").read_text())
+
+
+class ElasticBudgetTests(unittest.TestCase):
+    def write_events(self, directory, events):
+        session = directory / "active.jsonl"
+        session.write_text("".join(json.dumps(event) + "\n" for event in events))
+        return session
+
+    def test_pressure_moves_only_one_level(self):
+        metrics = {
+            "sessions": 1, "occupancy": 0.90, "growth_tokens_per_minute": 3000,
+            "compactions": 3, "min_compaction_gap_minutes": 4,
+            "cache_hit_rate": 0, "tool_calls": 15, "turns": 12,
+            "forgetting_signals": 1,
+        }
+        score, _, emergency = MODULE.score_metrics(metrics, POLICY)
+        target, _ = MODULE.choose_profile("balanced", score, emergency, {}, POLICY, MODULE.utcnow())
+        self.assertEqual(target, "standard")
+
+    def test_cooldown_blocks_non_emergency_upgrade(self):
+        now = MODULE.utcnow()
+        state = {"last_change_at": MODULE.iso(now - timedelta(minutes=2))}
+        target, reason = MODULE.choose_profile("standard", 3, False, state, POLICY, now)
+        self.assertEqual(target, "standard")
+        self.assertIn("cooldown", reason)
+
+    def test_calm_workload_can_step_down(self):
+        metrics = {
+            "sessions": 1, "occupancy": 0.12, "growth_tokens_per_minute": 0,
+            "compactions": 0, "min_compaction_gap_minutes": None,
+            "cache_hit_rate": 0, "tool_calls": 0, "turns": 1,
+            "forgetting_signals": 0,
+        }
+        score, _, emergency = MODULE.score_metrics(metrics, POLICY)
+        target, _ = MODULE.choose_profile("standard", score, emergency, {}, POLICY, MODULE.utcnow())
+        self.assertEqual(target, "balanced")
+
+    def test_config_update_preserves_unrelated_and_secret_lines(self):
+        original = 'model = "example-model"\nmodel_context_window = 1\nexample_unrelated_setting = "preserve-me"\n'
+        profile = next(item for item in POLICY["profiles"] if item["name"] == "standard")
+        updated = MODULE.desired_config(original, profile)
+        self.assertIn('example_unrelated_setting = "preserve-me"', updated)
+        self.assertIn('model = "example-model"', updated)
+        self.assertIn("model_context_window = 98304", updated)
+
+    def test_elastic_threshold_rises_with_pressure(self):
+        profile = next(item for item in POLICY["profiles"] if item["name"] == "standard")
+        calm = {
+            "occupancy": 0.10, "growth_tokens_per_minute": 0,
+            "tool_calls": 0, "turns": 1, "compactions": 0,
+        }
+        busy = {
+            "occupancy": 0.80, "growth_tokens_per_minute": 5000,
+            "tool_calls": 20, "turns": 12, "compactions": 0,
+        }
+        calm_limit, calm_ratio = MODULE.elastic_compact_token_limit(profile, calm, POLICY)
+        busy_limit, busy_ratio = MODULE.elastic_compact_token_limit(profile, busy, POLICY)
+        self.assertLess(calm_limit, busy_limit)
+        self.assertLess(calm_ratio, busy_ratio)
+        self.assertEqual(calm_limit % 1024, 0)
+        self.assertEqual(busy_limit % 1024, 0)
+
+    def test_repeat_compaction_uses_maximum_elastic_ratio(self):
+        profile = next(item for item in POLICY["profiles"] if item["name"] == "standard")
+        limit, ratio = MODULE.elastic_compact_token_limit(
+            profile, {"compactions": 2}, POLICY,
+        )
+        self.assertEqual(limit, 88064)
+        self.assertAlmostEqual(ratio, 88064 / 98304, places=4)
+
+    def test_learning_explores_under_tested_safe_strategies(self):
+        learning = {"strategies": {
+            "standard": {"count": 2, "mean_reward": 0.5},
+            "extended": {"count": 0, "mean_reward": 0.0},
+        }}
+        chosen, reason = MODULE.choose_learning_strategy(
+            POLICY, learning, 5, "session-a",
+        )
+        self.assertEqual(chosen, "extended")
+        self.assertIn("exploration", reason)
+
+    def test_learning_updates_completed_session_once(self):
+        now = MODULE.utcnow()
+        with tempfile.TemporaryDirectory() as temporary:
+            session = Path(temporary) / "finished.jsonl"
+            events = [
+                {"timestamp": MODULE.iso(now - timedelta(seconds=20)), "type": "event_msg",
+                 "payload": {"type": "task_started", "turn_id": "t1"}},
+                {"timestamp": MODULE.iso(now - timedelta(seconds=10)), "type": "event_msg",
+                 "payload": {"type": "token_count", "info": {"last_token_usage": {
+                     "input_tokens": 10000, "cached_input_tokens": 8000,
+                     "output_tokens": 500, "reasoning_output_tokens": 100}}}},
+                {"timestamp": MODULE.iso(now), "type": "event_msg",
+                 "payload": {"type": "task_complete", "turn_id": "t1"}},
+            ]
+            session.write_text("".join(json.dumps(event) + "\n" for event in events))
+            state = {"active_strategy": "standard"}
+            learning, outcome = MODULE.update_learning(state, str(session), POLICY)
+            self.assertIsNotNone(outcome)
+            self.assertEqual(learning["strategies"]["standard"]["count"], 1)
+            learning2, outcome2 = MODULE.update_learning(
+                {"active_strategy": "standard", "learning": learning}, str(session), POLICY,
+            )
+            self.assertIsNone(outcome2)
+            self.assertEqual(learning2["strategies"]["standard"]["count"], 1)
+
+    def test_successful_command_text_error_is_not_failure(self):
+        now = MODULE.utcnow()
+        with tempfile.TemporaryDirectory() as temporary:
+            session = Path(temporary) / "finished.jsonl"
+            events = [
+                {"timestamp": MODULE.iso(now - timedelta(seconds=2)), "type": "event_msg",
+                 "payload": {"type": "item_completed", "item": {"type": "CommandExecution",
+                 "status": "completed", "exit_code": 0, "aggregated_output": "error is documented"}}},
+                {"timestamp": MODULE.iso(now), "type": "event_msg",
+                 "payload": {"type": "task_complete", "turn_id": "t1"}},
+            ]
+            session.write_text("".join(json.dumps(event) + "\n" for event in events))
+            self.assertEqual(MODULE.session_outcome(session, POLICY)["failures"], 0)
+
+    def test_nonzero_command_exit_is_failure(self):
+        self.assertTrue(MODULE.item_failed({
+            "type": "CommandExecution", "status": "completed", "exit_code": 2,
+        }))
+        self.assertTrue(MODULE.item_failed({"type": "McpToolCall", "status": "failed"}))
+
+    def test_unfinished_preferred_session_is_not_displaced(self):
+        now = MODULE.utcnow()
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            preferred = directory / "preferred.jsonl"
+            newer = directory / "newer.jsonl"
+            preferred.write_text(json.dumps({
+                "timestamp": MODULE.iso(now - timedelta(minutes=2)), "type": "event_msg",
+                "payload": {"type": "task_started", "turn_id": "open"},
+            }) + "\n")
+            newer.write_text(json.dumps({
+                "timestamp": MODULE.iso(now - timedelta(minutes=1)), "type": "event_msg",
+                "payload": {"type": "token_count", "info": {}},
+            }) + "\n")
+            import os
+            os.utime(preferred, ((now - timedelta(minutes=2)).timestamp(),) * 2)
+            os.utime(newer, ((now - timedelta(minutes=1)).timestamp(),) * 2)
+            paths = MODULE.recent_session_files(directory, now, 6)
+            selected = MODULE.select_active_session(paths, str(preferred), now, 15)
+            self.assertEqual(selected, preferred)
+
+    def test_stale_completed_preferred_session_can_switch(self):
+        now = MODULE.utcnow()
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            preferred = directory / "preferred.jsonl"
+            newer = directory / "newer.jsonl"
+            preferred.write_text("".join(json.dumps(event) + "\n" for event in [
+                {"timestamp": MODULE.iso(now - timedelta(minutes=25)), "type": "event_msg",
+                 "payload": {"type": "task_started", "turn_id": "done"}},
+                {"timestamp": MODULE.iso(now - timedelta(minutes=20)), "type": "event_msg",
+                 "payload": {"type": "task_complete", "turn_id": "done"}},
+            ]))
+            newer.write_text(json.dumps({
+                "timestamp": MODULE.iso(now - timedelta(minutes=1)), "type": "event_msg",
+                "payload": {"type": "task_started", "turn_id": "new"},
+            }) + "\n")
+            import os
+            os.utime(preferred, ((now - timedelta(minutes=20)).timestamp(),) * 2)
+            os.utime(newer, ((now - timedelta(minutes=1)).timestamp(),) * 2)
+            paths = MODULE.recent_session_files(directory, now, 6)
+            self.assertEqual(MODULE.select_active_session(paths, str(preferred), now, 15), newer)
+            self.assertTrue(MODULE.session_is_evaluable(preferred, now, 15))
+
+    def test_session_strategy_mapping_controls_attribution(self):
+        now = MODULE.utcnow()
+        with tempfile.TemporaryDirectory() as temporary:
+            session = Path(temporary) / "finished.jsonl"
+            session.write_text("".join(json.dumps(event) + "\n" for event in [
+                {"timestamp": MODULE.iso(now - timedelta(seconds=2)), "type": "event_msg",
+                 "payload": {"type": "task_started", "turn_id": "t"}},
+                {"timestamp": MODULE.iso(now), "type": "event_msg",
+                 "payload": {"type": "task_complete", "turn_id": "t"}},
+            ]))
+            state = {"active_strategy": "extended", "session_strategies": {str(session): "balanced"}}
+            learning, outcome = MODULE.update_learning(state, str(session), POLICY)
+            self.assertEqual(outcome["strategy"], "balanced")
+            self.assertIn("balanced", learning["strategies"])
+
+    def test_reward_normalizes_session_length(self):
+        now = MODULE.utcnow()
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            def make(name, turns):
+                events = []
+                for index in range(turns):
+                    turn = str(index)
+                    events.extend([
+                        {"timestamp": MODULE.iso(now + timedelta(seconds=index * 3)),
+                         "type": "event_msg", "payload": {"type": "task_started", "turn_id": turn}},
+                        {"timestamp": MODULE.iso(now + timedelta(seconds=index * 3 + 1)),
+                         "type": "event_msg", "payload": {"type": "token_count", "info": {"last_token_usage": {
+                         "input_tokens": 1000, "cached_input_tokens": 500, "output_tokens": 100}}}},
+                        {"timestamp": MODULE.iso(now + timedelta(seconds=index * 3 + 2)),
+                         "type": "event_msg", "payload": {"type": "task_complete", "turn_id": turn}},
+                    ])
+                path = directory / name
+                path.write_text("".join(json.dumps(event) + "\n" for event in events))
+                return path
+            one = MODULE.session_outcome(make("one.jsonl", 1), POLICY)["reward"]
+            four = MODULE.session_outcome(make("four.jsonl", 4), POLICY)["reward"]
+            self.assertAlmostEqual(one, four, places=4)
+
+    def test_growth_ignores_zero_and_reset_samples(self):
+        base = datetime(2026, 9, 25, 8, 0, tzinfo=timezone.utc)
+        samples = [
+            (base, 20000),
+            (base + timedelta(minutes=1), 22000),
+            (base + timedelta(minutes=1, seconds=1), 0),
+            (base + timedelta(minutes=1, seconds=5), 19000),
+            (base + timedelta(minutes=2, seconds=5), 21000),
+        ]
+        self.assertEqual(MODULE.robust_growth_rate(samples), 2000)
+
+    def test_metrics_use_only_active_session_and_configured_window(self):
+        now = datetime(2026, 9, 25, 9, 0, tzinfo=timezone.utc)
+        def event(timestamp, event_type, payload=None):
+            result = {"timestamp": MODULE.iso(timestamp), "type": event_type}
+            if payload is not None:
+                result["payload"] = payload
+            return result
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            old = directory / "old.jsonl"
+            old.write_text(json.dumps(event(now - timedelta(minutes=2), "compacted")) + "\n")
+            active_events = [
+                event(now - timedelta(minutes=3), "event_msg", {
+                    "type": "token_count", "info": {
+                        "last_token_usage": {"input_tokens": 20000, "cached_input_tokens": 10000},
+                        "model_context_window": 90000,
+                    },
+                }),
+                event(now - timedelta(minutes=2), "compacted"),
+                event(now - timedelta(minutes=1), "event_msg", {
+                    "type": "token_count", "info": {
+                        "last_token_usage": {"input_tokens": 24000, "cached_input_tokens": 12000},
+                        "model_context_window": 90000,
+                    },
+                }),
+            ]
+            active = self.write_events(directory, active_events)
+            old_time = (now - timedelta(minutes=10)).timestamp()
+            active_time = now.timestamp()
+            import os
+            os.utime(old, (old_time, old_time))
+            os.utime(active, (active_time, active_time))
+            metrics = MODULE.collect_metrics(directory, POLICY, now, 98304)
+        self.assertEqual(metrics["compactions"], 1)
+        self.assertAlmostEqual(metrics["occupancy"], 24000 / 98304, places=4)
+        self.assertFalse(metrics["legacy_session"])
+
+    def test_legacy_session_freezes_current_profile(self):
+        now = datetime(2026, 9, 25, 9, 0, tzinfo=timezone.utc)
+        def event(timestamp, event_type, payload=None):
+            result = {"timestamp": MODULE.iso(timestamp), "type": event_type}
+            if payload is not None:
+                result["payload"] = payload
+            return result
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            events = [
+                event(now - timedelta(minutes=4), "event_msg", {
+                    "type": "token_count", "info": {
+                        "last_token_usage": {"input_tokens": 20000},
+                        "model_context_window": 31129,
+                    },
+                }),
+                event(now - timedelta(minutes=3), "compacted"),
+                event(now - timedelta(minutes=2), "compacted"),
+                event(now - timedelta(minutes=1), "event_msg", {
+                    "type": "token_count", "info": {
+                        "last_token_usage": {"input_tokens": 26000},
+                        "model_context_window": 31129,
+                    },
+                }),
+            ]
+            self.write_events(directory, events)
+            metrics = MODULE.collect_metrics(directory, POLICY, now, 131072)
+
+        self.assertTrue(metrics["legacy_session"])
+        self.assertEqual(metrics["compactions"], 0)
+        self.assertEqual(metrics["growth_tokens_per_minute"], 0)
+        self.assertEqual(metrics["ignored_legacy_metrics"]["compactions"], 2)
+        score, _, emergency = MODULE.score_metrics(metrics, POLICY)
+        target, reason = MODULE.choose_profile(
+            "extended", score, emergency,
+            {"last_change_at": MODULE.iso(now)}, POLICY, now, True,
+        )
+        self.assertEqual(target, "extended")
+        self.assertIn("profile frozen", reason)
+
+    def test_repeat_compaction_jumps_to_maximum_once(self):
+        now = MODULE.utcnow()
+        target, reason = MODULE.choose_profile(
+            "balanced", 6, True, {}, POLICY, now,
+            repeat_compaction=True,
+        )
+        self.assertEqual(target, "extended")
+        self.assertIn("repeat-compaction guard", reason)
+
+        target, reason = MODULE.choose_profile(
+            "extended", 6, True, {}, POLICY, now,
+            profile_change_locked=True, repeat_compaction=True,
+        )
+        self.assertEqual(target, "extended")
+        self.assertIn("per-session", reason)
+
+    def test_same_session_downgrade_is_deferred(self):
+        target, reason = MODULE.choose_profile(
+            "standard", -2, False, {}, POLICY, MODULE.utcnow(),
+            allow_downgrade=False,
+        )
+        self.assertEqual(target, "standard")
+        self.assertIn("deferred", reason)
+
+    def test_integration_repeat_compaction_changes_profile_only_once(self):
+        now = MODULE.utcnow()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            sessions = root / "sessions"
+            sessions.mkdir()
+            config = root / "config.toml"
+            config.write_text(
+                'model_provider = "custom"\nmodel = "example-model"\n'
+                'model_reasoning_effort = "medium"\n'
+                'model_context_window = 98304\n'
+                'model_auto_compact_token_limit = 86016\n'
+            )
+            policy = root / "policy.json"
+            policy.write_text(json.dumps(POLICY))
+            state = root / "state.json"
+            state.write_text(json.dumps({"current_profile": "standard"}))
+            events = [
+                {"timestamp": MODULE.iso(now - timedelta(minutes=4)),
+                 "type": "event_msg", "payload": {"type": "token_count",
+                 "info": {"last_token_usage": {"input_tokens": 70000},
+                 "model_context_window": 98304}}},
+                {"timestamp": MODULE.iso(now - timedelta(minutes=3)), "type": "compacted"},
+                {"timestamp": MODULE.iso(now - timedelta(minutes=2)), "type": "compacted"},
+                {"timestamp": MODULE.iso(now - timedelta(minutes=1)),
+                 "type": "event_msg", "payload": {"type": "token_count",
+                 "info": {"last_token_usage": {"input_tokens": 76000},
+                 "model_context_window": 98304}}},
+            ]
+            session = self.write_events(sessions, events)
+            decisions = root / "decisions.jsonl"
+            original_decisions = MODULE.DECISIONS
+            MODULE.DECISIONS = decisions
+            args = Namespace(
+                dry_run=False, force=True, verbose=False, config=str(config),
+                policy=str(policy), state=str(state), sessions_dir=str(sessions),
+            )
+            try:
+                first = MODULE.run(args)
+                second = MODULE.run(args)
+            finally:
+                MODULE.DECISIONS = original_decisions
+
+            self.assertEqual(first["to"], "extended")
+            self.assertIn("repeat-compaction guard", first["decision"])
+            self.assertEqual(second["to"], "extended")
+            self.assertIn("per-session", second["decision"])
+            saved = json.loads(state.read_text())
+            self.assertEqual(saved["last_profile_change_session"], str(session))
+            self.assertIn("model_auto_compact_token_limit = 122880", config.read_text())
+
+
+if __name__ == "__main__":
+    unittest.main()
