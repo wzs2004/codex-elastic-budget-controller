@@ -1,0 +1,20 @@
+[
+  {
+    "id": "arithmetic",
+    "adaptive_profile": "economy",
+    "prompt": "Return JSON only. Put the result in answer. Compute: a shop has 17 boxes with 24 items each, sells 139 items, then receives 5 boxes with 18 items each. Return remaining_items and parity (even or odd).",
+    "expected": {"remaining_items": 359, "parity": "odd"}
+  },
+  {
+    "id": "constraint_reasoning",
+    "adaptive_profile": "standard",
+    "prompt": "Return JSON only in exactly this shape: {\"answer\":{\"schedule\":[\"A\",\"B\",\"C\",\"D\"]}} with the array replaced by the solution. Schedule A, B, C, D into slots 1-4. A is before C. B is immediately after D. C is not slot 4.",
+    "expected": {"schedule": ["A", "C", "D", "B"]}
+  },
+  {
+    "id": "structured_analysis",
+    "adaptive_profile": "extended",
+    "prompt": "Return JSON only. The top-level object must contain only answer. Inside answer use exactly these keys: max_name, first_sum, second_sum, descending. For records [(alpha,17,4),(beta,23,9),(gamma,11,5),(delta,29,8),(epsilon,19,7)], compute: name with highest first-minus-second value; sum of all first values; sum of all second values; and the names sorted by first-minus-second descending.",
+    "expected": {"max_name": "delta", "first_sum": 99, "second_sum": 33, "descending": ["delta", "beta", "alpha", "epsilon", "gamma"]}
+  }
+]

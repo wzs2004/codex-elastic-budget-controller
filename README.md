@@ -1,5 +1,7 @@
 # Codex Elastic Budget Controller
 
+[简体中文](README.zh-CN.md)
+
 An experimental, standard-library-only controller for adapting Codex context and compaction settings from observed workload pressure and session outcomes.
 
 ## What it adjusts
@@ -48,7 +50,10 @@ For periodic execution, use your platform scheduler. The controller writes confi
 
 ```bash
 python3 test_elastic_budget_controller.py
+python3 benchmarks/run_ab.py --help
 ```
+
+See [`benchmarks/README.zh-CN.md`](benchmarks/README.zh-CN.md) for the reproducible paired A/B methodology, raw evidence format, limitations, and results.
 
 ## Safety notes
 

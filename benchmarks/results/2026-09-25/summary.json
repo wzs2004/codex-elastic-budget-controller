@@ -1,0 +1,101 @@
+{
+  "groups": {
+    "baseline": {
+      "trials": 9,
+      "quality": {
+        "mean": 0.8889,
+        "sd": 0.3333
+      },
+      "latency_seconds": {
+        "mean": 28.7248,
+        "sd": 37.2685
+      },
+      "total_tokens": {
+        "mean": 12733.7778,
+        "sd": 4949.0349
+      },
+      "cost_proxy": {
+        "mean": 11990.3333,
+        "sd": 5837.8241
+      },
+      "success_rate": 0.8889,
+      "timeouts": 1
+    },
+    "adaptive": {
+      "trials": 9,
+      "quality": {
+        "mean": 0.8889,
+        "sd": 0.3333
+      },
+      "latency_seconds": {
+        "mean": 32.2391,
+        "sd": 36.9699
+      },
+      "total_tokens": {
+        "mean": 13023.5556,
+        "sd": 5068.2917
+      },
+      "cost_proxy": {
+        "mean": 12215.4444,
+        "sd": 5853.7433
+      },
+      "success_rate": 0.8889,
+      "timeouts": 1
+    }
+  },
+  "by_case": {
+    "arithmetic": {
+      "baseline": {
+        "quality_mean": 1.0,
+        "total_tokens_mean": 14163,
+        "cost_proxy_mean": 14613.0,
+        "latency_seconds_mean": 15.983,
+        "timeouts": 0
+      },
+      "adaptive": {
+        "quality_mean": 1.0,
+        "total_tokens_mean": 14142.33,
+        "cost_proxy_mean": 14410.33,
+        "latency_seconds_mean": 8.13,
+        "timeouts": 0
+      }
+    },
+    "constraint_reasoning": {
+      "baseline": {
+        "quality_mean": 1.0,
+        "total_tokens_mean": 14242,
+        "cost_proxy_mean": 15280.0,
+        "latency_seconds_mean": 9.877,
+        "timeouts": 0
+      },
+      "adaptive": {
+        "quality_mean": 1.0,
+        "total_tokens_mean": 15130.67,
+        "cost_proxy_mean": 11959.33,
+        "latency_seconds_mean": 27.025,
+        "timeouts": 0
+      }
+    },
+    "structured_analysis": {
+      "baseline": {
+        "quality_mean": 0.6667,
+        "total_tokens_mean": 9796.33,
+        "cost_proxy_mean": 6078.0,
+        "latency_seconds_mean": 60.315,
+        "timeouts": 1
+      },
+      "adaptive": {
+        "quality_mean": 0.6667,
+        "total_tokens_mean": 9797.67,
+        "cost_proxy_mean": 10276.67,
+        "latency_seconds_mean": 61.562,
+        "timeouts": 1
+      }
+    }
+  },
+  "pairwise": {
+    "baseline_wins": 3,
+    "adaptive_wins": 6,
+    "ties": 0
+  }
+}

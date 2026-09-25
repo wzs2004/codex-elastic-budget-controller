@@ -4,3 +4,4 @@ elastic-budget-state.json
 elastic-budget-decisions.jsonl
 *.log
 .DS_Store
+benchmarks/results/smoke/
