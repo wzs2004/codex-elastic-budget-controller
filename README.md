@@ -62,6 +62,7 @@ The controller combines:
 - stable-prefix/dynamic-suffix prompt layout hints for cache reuse;
 - quality/failure cascade fallback, enabled only by explicit request opt-in;
 - quality, failure-rate, and latency guardrails plus IPS/SNIPS/DR evaluation;
+- deterministic tool-output compaction that preserves actionable errors and can archive exact originals;
 - four capacity profiles from economy through extended;
 - an elastic compaction threshold with reserve and quantization limits;
 - hysteresis, cooldowns, legacy-session isolation, and one profile change per session;
@@ -78,6 +79,17 @@ python3 ~/.codex/elastic-budget-controller.py --force --verbose
 ```
 
 For periodic execution, use your platform scheduler. The controller writes config and state atomically and is designed to be idempotent.
+
+### Compact noisy tool output
+
+Pipe command/test output through the built-in extractive compactor. It strips ANSI, folds consecutive duplicates, prioritizes errors and the tail, and can archive the byte-for-byte original for recovery:
+
+```bash
+pytest -q 2>&1 | python3 elastic-budget-controller.py --shrink-output \
+  --shrink-max-lines 160 --shrink-archive-dir ~/.codex/elastic-output
+```
+
+Wrapped requests also expose `stdout_compact`, `stderr_compact`, and compression statistics. Set `output_archive_dir` in the request to retain exact originals. This is deliberately extractive rather than a lossy semantic summary.
 
 `--execute-request` exports the selected plan as `ELASTIC_BUDGET_PLAN`, parses the worker's final JSON line, updates the learner immediately, and appends a decision/propensity/outcome record beside the state file for offline evaluation.
 

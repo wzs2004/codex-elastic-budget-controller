@@ -15,6 +15,21 @@ POLICY = json.loads(Path(__file__).with_name("elastic-budget-policy.example.json
 
 
 class ElasticBudgetTests(unittest.TestCase):
+    def test_shrink_output_keeps_errors_and_collapses_noise(self):
+        raw = "\x1b[31mPASS\x1b[0m\n\n" + "same\n" * 8 + "middle error: keep me\n" + "tail\n"
+        compact = MODULE.shrink_output(raw, max_lines=12, max_chars=1000)
+        self.assertIn("middle error: keep me", compact["text"])
+        self.assertIn("repeated", compact["text"])
+        self.assertNotIn("\x1b[31m", compact["text"])
+        self.assertLess(compact["compressed_chars"], compact["original_chars"])
+
+    def test_shrink_output_archives_exact_original(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            compact = MODULE.shrink_output("a\n\x1b[32mb\x1b[0m\n", archive_dir=Path(temporary))
+            archive = Path(compact["archive_path"])
+            self.assertTrue(archive.exists())
+            self.assertEqual(archive.read_text(), "a\n\x1b[32mb\x1b[0m\n")
+
     def write_events(self, directory, events):
         session = directory / "active.jsonl"
         session.write_text("".join(json.dumps(event) + "\n" for event in events))

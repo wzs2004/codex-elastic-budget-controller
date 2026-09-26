@@ -13,6 +13,7 @@ import os
 import re
 import statistics
 import subprocess
+import sys
 import tempfile
 import time
 import uuid
@@ -32,6 +33,83 @@ FORGETTING_PATTERNS = (
     "forgot", "forgetting", "asked again", "repeat confirmation",
     "lost context", "context compression",
 )
+ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+IMPORTANT_OUTPUT = re.compile(
+    r"(?i)(error|failed|failure|exception|traceback|warning|warn|panic|"
+    r"security|permission|denied|assert|todo|fixme|❌|⚠|✗|✘)"
+)
+
+
+def shrink_output(
+    text: str, max_lines: int = 160, max_chars: int = 16000,
+    archive_dir: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """Compress noisy tool output without deleting actionable evidence.
+
+    This is intentionally deterministic and extractive: ANSI noise and blank
+    runs are removed, consecutive duplicates are collapsed, and only when the
+    hard budget is still exceeded are middle lines omitted. The original can
+    optionally be archived for exact recovery.
+    """
+    original = str(text or "")
+    cleaned = ANSI_ESCAPE.sub("", original).replace("\r", "")
+    source = cleaned.splitlines()
+    lines: List[str] = []
+    blank_run = 0
+    index = 0
+    while index < len(source):
+        line = source[index].rstrip()
+        if not line.strip():
+            blank_run += 1
+            if blank_run <= 1:
+                lines.append("")
+            index += 1
+            continue
+        blank_run = 0
+        repeat = 1
+        while index + repeat < len(source) and source[index + repeat].rstrip() == line:
+            repeat += 1
+        lines.append(line)
+        if repeat > 2:
+            lines.append(f"… repeated {repeat - 1} times")
+        index += repeat
+    omitted = 0
+    max_lines = max(12, int(max_lines))
+    if len(lines) > max_lines:
+        head = max_lines // 3
+        tail = max_lines // 3
+        important = [
+            line for line in lines[head:-tail]
+            if IMPORTANT_OUTPUT.search(line)
+        ]
+        middle_budget = max_lines - head - tail - 1
+        kept_important = important[:max(0, middle_budget)]
+        omitted = len(lines) - head - tail - len(kept_important)
+        lines = lines[:head] + kept_important + [
+            f"… {omitted} lines omitted; recover the archived output if needed"
+        ] + lines[-tail:]
+    result = "\n".join(lines)
+    if len(result) > max_chars:
+        marker = "\n… output truncated; recover the archived output if needed\n"
+        keep = max(0, int(max_chars) - len(marker))
+        result = result[:keep] + marker
+    archive_path = None
+    if archive_dir is not None:
+        archive_dir = Path(archive_dir)
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        archive_path = archive_dir / f"output-{uuid.uuid4().hex}.log"
+        atomic_write(archive_path, original)
+    return {
+        "text": result,
+        "original_chars": len(original),
+        "compressed_chars": len(result),
+        "original_lines": len(source),
+        "compressed_lines": len(result.splitlines()),
+        "compression_ratio": round(len(result) / max(1, len(original)), 4),
+        "omitted_lines": omitted,
+        "archive_path": str(archive_path) if archive_path else None,
+    }
+
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -687,8 +765,20 @@ def execute_request(
                     "features": attempt_plan["features"],
                     "quality_score": quality_from_result(parsed) if not timed_out else 0.0,
                     "cost_tokens": cost_tokens, "latency_seconds": latency, "success": success}
+        archive_dir = request.get("output_archive_dir")
+        stdout_compact = shrink_output(
+            stdout, int(request.get("output_max_lines") or 160),
+            int(request.get("output_max_chars") or 16000),
+            Path(archive_dir) if archive_dir else None,
+        )
+        stderr_compact = shrink_output(
+            stderr, int(request.get("output_max_lines") or 160),
+            int(request.get("output_max_chars") or 16000),
+            Path(archive_dir) if archive_dir else None,
+        )
         return {"plan": attempt_plan, "feedback": feedback, "return_code": return_code,
                 "timed_out": timed_out, "stdout": stdout, "stderr": stderr,
+                "stdout_compact": stdout_compact, "stderr_compact": stderr_compact,
                 "parsed_result": parsed}
 
     if contract_plan:
@@ -862,11 +952,6 @@ def request_budget(
             "minimum_quality_risk": float(cascade.get("minimum_quality_risk", 0.35)),
             "fallback_on_failure": bool(cascade.get("fallback_on_failure", True)),
             "execution_requires_opt_in": True,
-        },
-        "provider_integration_hints": {
-            "model_routing": "use upstream router if available; not changed by this controller",
-            "speculative_decoding": "provider/runtime capability; not changed by this controller",
-            "kv_cache_quantization": "self-hosted runtime capability; not changed by this controller",
         },
     }
 
@@ -1471,11 +1556,26 @@ def parser() -> argparse.ArgumentParser:
         "--execute-request", metavar="JSON",
         help="plan, run command, parse its final JSON line, and automatically learn",
     )
+    result.add_argument(
+        "--shrink-output", action="store_true",
+        help="read tool output from stdin and emit a deterministic compact view",
+    )
+    result.add_argument("--shrink-max-lines", type=int, default=160)
+    result.add_argument("--shrink-max-chars", type=int, default=16000)
+    result.add_argument("--shrink-archive-dir")
     return result
 
 
 def main() -> None:
     args = parser().parse_args()
+    if args.shrink_output:
+        compact = shrink_output(
+            sys.stdin.read(), args.shrink_max_lines,
+            args.shrink_max_chars,
+            Path(args.shrink_archive_dir) if args.shrink_archive_dir else None,
+        )
+        print(compact["text"], end="\n" if compact["text"] else "")
+        return
     if args.execute_request is not None:
         policy = read_json(Path(args.policy), None)
         if not policy:
