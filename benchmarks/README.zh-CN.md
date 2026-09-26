@@ -47,6 +47,16 @@
 - 自定义 provider 的缓存和计费规则可能与公开 API 不同；
 - benchmark 的 oracle 契约强于一般生产 verifier；结果只适用于可自动验证任务。
 
+## 工具输出压缩机制实验
+
+使用固定的 pytest、构建日志、heartbeat、git 状态、JSON 和 ANSI 混合输出，比较原始输出与 `shrink_output()` 的抽取式压缩结果：
+
+```bash
+python3 benchmarks/benchmark_output_compaction.py
+```
+
+结果写入 `benchmarks/results/2026-09-26-output-compaction.json`，实验说明见 [`OUTPUT_COMPACTION_EXPERIMENT.zh-CN.md`](OUTPUT_COMPACTION_EXPERIMENT.zh-CN.md)。
+
 ## 复现
 
 ```bash

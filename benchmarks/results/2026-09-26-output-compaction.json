@@ -1,0 +1,78 @@
+{
+  "kind": "extractive_output_compaction_mechanism_benchmark",
+  "cases": 6,
+  "token_estimator": "controller.estimate_request_tokens",
+  "total_original_tokens_estimate": 4198,
+  "total_compressed_tokens_estimate": 890,
+  "token_reduction_percent": 78.8,
+  "important_line_retention": 1.0,
+  "rows": [
+    {
+      "case": "pytest",
+      "original_chars": 3033,
+      "compressed_chars": 288,
+      "original_tokens_estimate": 759,
+      "compressed_tokens_estimate": 73,
+      "token_reduction_percent": 90.38,
+      "important_lines": 1,
+      "important_lines_retained": 1,
+      "archive_not_used": true
+    },
+    {
+      "case": "build",
+      "original_chars": 759,
+      "compressed_chars": 133,
+      "original_tokens_estimate": 190,
+      "compressed_tokens_estimate": 34,
+      "token_reduction_percent": 82.11,
+      "important_lines": 1,
+      "important_lines_retained": 1,
+      "archive_not_used": true
+    },
+    {
+      "case": "logs",
+      "original_chars": 5248,
+      "compressed_chars": 152,
+      "original_tokens_estimate": 1312,
+      "compressed_tokens_estimate": 39,
+      "token_reduction_percent": 97.03,
+      "important_lines": 2,
+      "important_lines_retained": 2,
+      "archive_not_used": true
+    },
+    {
+      "case": "git",
+      "original_chars": 1289,
+      "compressed_chars": 1289,
+      "original_tokens_estimate": 323,
+      "compressed_tokens_estimate": 323,
+      "token_reduction_percent": 0.0,
+      "important_lines": 1,
+      "important_lines_retained": 1,
+      "archive_not_used": true
+    },
+    {
+      "case": "json",
+      "original_chars": 4789,
+      "compressed_chars": 1286,
+      "original_tokens_estimate": 1198,
+      "compressed_tokens_estimate": 322,
+      "token_reduction_percent": 73.12,
+      "important_lines": 0,
+      "important_lines_retained": 0,
+      "archive_not_used": true
+    },
+    {
+      "case": "mixed",
+      "original_chars": 1661,
+      "compressed_chars": 396,
+      "original_tokens_estimate": 416,
+      "compressed_tokens_estimate": 99,
+      "token_reduction_percent": 76.2,
+      "important_lines": 2,
+      "important_lines_retained": 2,
+      "archive_not_used": true
+    }
+  ],
+  "caveat": "Mechanism benchmark only; estimator is not provider billing and no model quality claim is made."
+}
