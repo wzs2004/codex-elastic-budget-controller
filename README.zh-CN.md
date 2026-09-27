@@ -174,25 +174,20 @@ python3 benchmarks/off_policy_eval.py path/to/requests.jsonl
 ```bash
 python3 test_elastic_budget_controller.py
 python3 test_off_policy_eval.py
-python3 benchmarks/compare_v13.py
-python3 benchmarks/compare_v14.py
+python3 benchmarks/benchmark_output_compaction.py
 python3 benchmarks/run_ab.py --help
 ```
 
 评测方法、原始数据和结论见 [`benchmarks/README.zh-CN.md`](benchmarks/README.zh-CN.md)。
 
-### 实验图表与问题分析
+### 当前版本实验与图表
 
-![A/B 实验总览](benchmarks/results/2026-09-25/charts/overview.svg)
+![工具输出压缩实验](benchmarks/results/2026-09-26-output-compaction.svg)
 
-- [正式实验报告](benchmarks/results/2026-09-25/REPORT.zh-CN.md)
-- [实验暴露的问题、文献依据与下一版方案](benchmarks/PROBLEMS_AND_NEXT_STEPS.zh-CN.md)
-- [Token 效率研究与闭环学习方案](benchmarks/TOKEN_EFFICIENCY_RESEARCH.zh-CN.md)
-- [在线学习模拟结果](benchmarks/results/2026-09-25/online-learning-simulation.svg)（只验证学习机制，不代表真实模型节省）
-- [v1.3 机制测试](benchmarks/results/2026-09-25/v1.3-mechanism-benchmark.svg)：1,000 次确定性受控试验，输入片段减少 34.62%，证据保留率 100%。这只证明筛选逻辑按设计工作，不等于真实模型费用降低 34.62%，也不证明回答质量必然提高；
-- [v1.4 研究与结果](benchmarks/V1.4_RESEARCH_AND_RESULTS.zh-CN.md) · [2,000 请求机制模拟](benchmarks/results/2026-09-26-v1.4/v14-policy-simulation.svg) · [真实 Codex A/B](benchmarks/results/2026-09-26-v1.4/real-ab/REPORT.zh-CN.md)；
-- [v2 验证式模型级联：研究、算法与边界](benchmarks/V2_VERIFIED_PROGRESSIVE_INFERENCE.zh-CN.md) · [无控制 baseline 对比真实 Codex A/B](benchmarks/results/2026-09-26-v2/model-cascade-ab/REPORT.zh-CN.md)；
-- [按任务图表](benchmarks/results/2026-09-25/charts/by-case.svg) · [配对差值图](benchmarks/results/2026-09-25/charts/paired-deltas.svg) · [有效性问题图](benchmarks/results/2026-09-25/charts/validity-threats.svg)
+- [工具输出压缩实验说明](benchmarks/OUTPUT_COMPACTION_EXPERIMENT.zh-CN.md)
+- 6 类固定工具输出：估算 Token 从 **4,198 降到 890，下降 78.80%**；
+- 重要错误/警告行保留率：**100%（5/5）**；
+- 这是基于仓库估算器的抽取式机制实验，不等于 provider 实际账单节省，也没有模型质量等价结论。
 
 ## 安全提示
 

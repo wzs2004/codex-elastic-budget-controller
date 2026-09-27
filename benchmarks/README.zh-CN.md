@@ -60,11 +60,10 @@ python3 benchmarks/benchmark_output_compaction.py
 ## 复现
 
 ```bash
-python3 benchmarks/run_ab.py --rounds 3 --economy-model gpt-6-sol \
-  --output benchmarks/results/latest
-python3 benchmarks/generate_charts.py benchmarks/results/latest
+python3 benchmarks/benchmark_output_compaction.py
 ```
 
-脚本调用本机 `codex exec`，因此需要已经可用的 Codex CLI 登录和配置。建议先用 `--rounds 1` 验证环境。
+该命令使用固定样本复现实验，并更新 `benchmarks/results/2026-09-26-output-compaction.json`。
+图表见 [`2026-09-26-output-compaction.svg`](results/2026-09-26-output-compaction.svg)，详细说明见 [`OUTPUT_COMPACTION_EXPERIMENT.zh-CN.md`](OUTPUT_COMPACTION_EXPERIMENT.zh-CN.md)。
 
-本轮结果的图表、有效性问题和改进方案见 [`PROBLEMS_AND_NEXT_STEPS.zh-CN.md`](PROBLEMS_AND_NEXT_STEPS.zh-CN.md)。
+需要真实 Codex A/B 时，可使用 `run_ab.py`；该路径依赖本机 `codex exec` 登录和配置，并不属于默认回归测试。

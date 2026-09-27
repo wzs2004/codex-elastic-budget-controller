@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="700" viewBox="0 0 1100 700">
+  <rect width="1100" height="700" fill="#0f172a"/>
+  <text x="70" y="62" fill="#f8fafc" font-family="Arial, sans-serif" font-size="30" font-weight="700">Tool-output compaction benchmark</text>
+  <text x="70" y="96" fill="#cbd5e1" font-family="Arial, sans-serif" font-size="17">Estimated tokens before vs. after extractive compaction · 2026-09-26</text>
+  <text x="70" y="145" fill="#f8fafc" font-family="Arial, sans-serif" font-size="20" font-weight="700">4,198 → 890 tokens</text>
+  <text x="330" y="145" fill="#38bdf8" font-family="Arial, sans-serif" font-size="20" font-weight="700">78.80% reduction</text>
+  <line x1="90" y1="560" x2="1040" y2="560" stroke="#64748b" stroke-width="2"/>
+  <line x1="90" y1="190" x2="90" y2="560" stroke="#64748b" stroke-width="2"/>
+  <g fill="#94a3b8" font-family="Arial, sans-serif" font-size="14">
+    <text x="58" y="565">0</text><text x="43" y="472">500</text><text x="36" y="379">1,000</text><text x="36" y="286">1,500</text><text x="36" y="193">2,000</text>
+  </g>
+  <g stroke="#334155" stroke-width="1">
+    <line x1="90" y1="467" x2="1040" y2="467"/><line x1="90" y1="374" x2="1040" y2="374"/><line x1="90" y1="281" x2="1040" y2="281"/><line x1="90" y1="188" x2="1040" y2="188"/>
+  </g>
+  <g font-family="Arial, sans-serif" font-size="14" text-anchor="middle">
+    <g fill="#f97316"><rect x="125" y="419" width="42" height="141"/><text x="146" y="405" fill="#fed7aa">759</text><text x="146" y="590" fill="#e2e8f0">pytest</text></g>
+    <g fill="#f97316"><rect x="275" y="525" width="42" height="35"/><text x="296" y="512" fill="#fed7aa">190</text><text x="296" y="590" fill="#e2e8f0">build</text></g>
+    <g fill="#f97316"><rect x="425" y="317" width="42" height="243"/><text x="446" y="303" fill="#fed7aa">1,312</text><text x="446" y="590" fill="#e2e8f0">logs</text></g>
+    <g fill="#f97316"><rect x="575" y="500" width="42" height="60"/><text x="596" y="486" fill="#fed7aa">323</text><text x="596" y="590" fill="#e2e8f0">git</text></g>
+    <g fill="#f97316"><rect x="725" y="338" width="42" height="222"/><text x="746" y="324" fill="#fed7aa">1,198</text><text x="746" y="590" fill="#e2e8f0">json</text></g>
+    <g fill="#f97316"><rect x="875" y="483" width="42" height="77"/><text x="896" y="469" fill="#fed7aa">416</text><text x="896" y="590" fill="#e2e8f0">mixed</text></g>
+    <g fill="#38bdf8"><rect x="175" y="546" width="42" height="14"/><text x="196" y="535" fill="#bae6fd">73</text></g>
+    <g fill="#38bdf8"><rect x="325" y="554" width="42" height="6"/><text x="346" y="543" fill="#bae6fd">34</text></g>
+    <g fill="#38bdf8"><rect x="475" y="553" width="42" height="7"/><text x="496" y="542" fill="#bae6fd">39</text></g>
+    <g fill="#38bdf8"><rect x="625" y="500" width="42" height="60"/><text x="646" y="486" fill="#bae6fd">323</text></g>
+    <g fill="#38bdf8"><rect x="775" y="500" width="42" height="60"/><text x="796" y="486" fill="#bae6fd">322</text></g>
+    <g fill="#38bdf8"><rect x="925" y="542" width="42" height="18"/><text x="946" y="531" fill="#bae6fd">99</text></g>
+  </g>
+  <rect x="760" y="125" width="18" height="18" fill="#f97316"/><text x="786" y="140" fill="#cbd5e1" font-family="Arial, sans-serif" font-size="15">Original</text>
+  <rect x="860" y="125" width="18" height="18" fill="#38bdf8"/><text x="886" y="140" fill="#cbd5e1" font-family="Arial, sans-serif" font-size="15">Compacted</text>
+  <text x="70" y="650" fill="#94a3b8" font-family="Arial, sans-serif" font-size="14">Important error/warning retention: 100% (5/5) · estimator-based mechanism benchmark, not provider billing</text>
+</svg>

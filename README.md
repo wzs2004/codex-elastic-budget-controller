@@ -100,25 +100,20 @@ When `context_segments` are supplied, the plan contains the selected segments an
 ```bash
 python3 test_elastic_budget_controller.py
 python3 test_off_policy_eval.py
-python3 benchmarks/compare_v13.py
-python3 benchmarks/compare_v14.py
+python3 benchmarks/benchmark_output_compaction.py
 python3 benchmarks/run_ab.py --help
 ```
 
 See [`benchmarks/README.zh-CN.md`](benchmarks/README.zh-CN.md) for the reproducible paired A/B methodology, raw evidence format, limitations, and results.
 
-### Evidence charts and failure analysis
+### Current benchmark evidence
 
-![A/B benchmark overview](benchmarks/results/2026-09-25/charts/overview.svg)
+![Output compaction benchmark](benchmarks/results/2026-09-26-output-compaction.svg)
 
-- [Formal experiment report (Chinese)](benchmarks/results/2026-09-25/REPORT.zh-CN.md)
-- [Problems, literature review, and next experiment design (Chinese)](benchmarks/PROBLEMS_AND_NEXT_STEPS.zh-CN.md)
-- [Token-efficiency research and closed-loop design (Chinese)](benchmarks/TOKEN_EFFICIENCY_RESEARCH.zh-CN.md)
-- [Online-learning simulation](benchmarks/results/2026-09-25/online-learning-simulation.svg) (mechanism validation only, not real-model savings)
-- [v1.3 mechanism benchmark](benchmarks/results/2026-09-25/v1.3-mechanism-benchmark.svg): 1,000 deterministic trials, 34.62% fewer selected input tokens and 100% evidence retention; not real-model evidence
-- [v1.4 research and results (Chinese)](benchmarks/V1.4_RESEARCH_AND_RESULTS.zh-CN.md) · [2,000-request mechanism simulation](benchmarks/results/2026-09-26-v1.4/v14-policy-simulation.svg) · [real Codex A/B](benchmarks/results/2026-09-26-v1.4/real-ab/REPORT.zh-CN.md)
-- [v2 verifier-gated model cascade: research, algorithm, and limits (Chinese)](benchmarks/V2_VERIFIED_PROGRESSIVE_INFERENCE.zh-CN.md) · [real A/B against an uncontrolled fixed-standard baseline](benchmarks/results/2026-09-26-v2/model-cascade-ab/REPORT.zh-CN.md)
-- [By-case chart](benchmarks/results/2026-09-25/charts/by-case.svg) · [Paired deltas](benchmarks/results/2026-09-25/charts/paired-deltas.svg) · [Validity threats](benchmarks/results/2026-09-25/charts/validity-threats.svg)
+- [Output-compaction experiment report (Chinese)](benchmarks/OUTPUT_COMPACTION_EXPERIMENT.zh-CN.md)
+- Six fixed tool-output cases: estimated tokens fell from **4,198 to 890 (78.80%)**.
+- Important error/warning lines retained: **100% (5/5)**.
+- This is an extractive mechanism benchmark using the repository estimator; it is not provider billing and makes no model-quality claim.
 
 ## Safety notes
 
