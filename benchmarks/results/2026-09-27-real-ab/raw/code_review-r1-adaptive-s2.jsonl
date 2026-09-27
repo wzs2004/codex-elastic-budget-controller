@@ -1,0 +1,5 @@
+{"type":"thread.started","thread_id":"01a0e06c-73c3-7863-8199-4c1da497fc93"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"reasoning","text":"**Formatting JSON response**"}}
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"{\"answer\":{\"returned_ids\":[\"c\",\"a\"],\"limit_zero_bug\":true}}"}}
+{"type":"turn.completed","usage":{"input_tokens":12321,"cached_input_tokens":12032,"cache_write_input_tokens":0,"output_tokens":128,"reasoning_output_tokens":105}}

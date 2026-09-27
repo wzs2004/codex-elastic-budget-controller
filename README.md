@@ -108,6 +108,12 @@ See [`benchmarks/README.zh-CN.md`](benchmarks/README.zh-CN.md) for the reproduci
 
 ### Current benchmark evidence
 
+#### Real Codex A/B (2026-09-27)
+
+[Full report and raw evidence](benchmarks/results/2026-09-27-real-ab/REPORT.zh-CN.md) · [Per-case token chart](benchmarks/results/2026-09-27-real-ab/charts/by-case-tokens.svg) · [Cost-proxy chart](benchmarks/results/2026-09-27-real-ab/charts/by-case-cost-proxy.svg)
+
+Five task families × three paired rounds (30 real trials): quality and success rate were both 100%, and standard-model calls fell 73.33%. Total tokens nevertheless increased 30.69% and the weighted cost proxy increased 8.35%, so this run does not establish token or billing savings.
+
 ![Output compaction benchmark](benchmarks/results/2026-09-26-output-compaction.svg)
 
 - [Output-compaction experiment report (Chinese)](benchmarks/OUTPUT_COMPACTION_EXPERIMENT.zh-CN.md)

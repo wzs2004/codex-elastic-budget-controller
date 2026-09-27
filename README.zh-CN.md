@@ -182,6 +182,12 @@ python3 benchmarks/run_ab.py --help
 
 ### 当前版本实验与图表
 
+#### 真实 Codex A/B（2026-09-27）
+
+[完整报告与原始证据](benchmarks/results/2026-09-27-real-ab/REPORT.zh-CN.md) · [按任务 token 图](benchmarks/results/2026-09-27-real-ab/charts/by-case-tokens.svg) · [成本代理图](benchmarks/results/2026-09-27-real-ab/charts/by-case-cost-proxy.svg)
+
+5 类任务 × 3 轮、共 30 个真实配对 trial：质量和成功率均为 100%，标准模型调用减少 73.33%；但总 token 增加 30.69%，成本代理增加 8.35%，不能据此宣称总体节省。
+
 ![工具输出压缩实验](benchmarks/results/2026-09-26-output-compaction.svg)
 
 - [工具输出压缩实验说明](benchmarks/OUTPUT_COMPACTION_EXPERIMENT.zh-CN.md)

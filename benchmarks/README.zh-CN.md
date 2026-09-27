@@ -67,3 +67,7 @@ python3 benchmarks/benchmark_output_compaction.py
 图表见 [`2026-09-26-output-compaction.svg`](results/2026-09-26-output-compaction.svg)，详细说明见 [`OUTPUT_COMPACTION_EXPERIMENT.zh-CN.md`](OUTPUT_COMPACTION_EXPERIMENT.zh-CN.md)。
 
 需要真实 Codex A/B 时，可使用 `run_ab.py`；该路径依赖本机 `codex exec` 登录和配置，并不属于默认回归测试。
+
+### 最新真实 A/B 结果
+
+[`2026-09-27-real-ab/REPORT.zh-CN.md`](results/2026-09-27-real-ab/REPORT.zh-CN.md) 包含 5 类任务、3 轮配对、30 个真实 trial 的完整结果、原始证据和图表。该实验质量与成功率均为 100%，标准模型调用减少 73.33%，但总 token 增加 30.69%、成本代理增加 8.35%；因此不能把本版本宣传为已证明节省 token 或账单。

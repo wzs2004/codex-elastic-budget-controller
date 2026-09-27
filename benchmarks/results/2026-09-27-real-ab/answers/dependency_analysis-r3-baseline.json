@@ -1,0 +1,1 @@
+{"answer":{"original_minutes":20,"optimized_minutes":18,"original_critical_path":["ingest","validate","enrich","index","publish"],"saved_minutes":2}}

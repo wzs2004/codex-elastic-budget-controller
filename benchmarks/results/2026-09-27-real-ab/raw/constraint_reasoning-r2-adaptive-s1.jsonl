@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a0e06e-7fc0-7c40-9ca4-2ffb4362df2b"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"{\"answer\":{\"schedule\":[\"D\",\"B\",\"A\",\"C\",\"E\"]}}"}}
+{"type":"turn.completed","usage":{"input_tokens":12788,"cached_input_tokens":12032,"cache_write_input_tokens":0,"output_tokens":145,"reasoning_output_tokens":123}}
